@@ -12,13 +12,11 @@ import type {
   ForecastInputs,
   ReverseTarget,
   ScenarioKey,
-  TimeGranularity,
 } from "@/lib/forecast/types";
 
 export function useForecast() {
   const [inputs, setInputs] = useState<ForecastInputs>(DEFAULT_INPUTS);
   const [scenario, setScenario] = useState<ScenarioKey>("expected");
-  const [granularity, setGranularity] = useState<TimeGranularity>("monthly");
   const [reverseTarget, setReverseTarget] = useState<ReverseTarget>({});
 
   const snapshot = useMemo(
@@ -36,8 +34,8 @@ export function useForecast() {
   );
 
   const projections = useMemo(
-    () => computePeriodProjections(inputs, scenario, granularity),
-    [inputs, scenario, granularity]
+    () => computePeriodProjections(inputs, scenario),
+    [inputs, scenario]
   );
 
   const breakEvenPeriod = useMemo(
@@ -63,8 +61,6 @@ export function useForecast() {
     updateInput,
     scenario,
     setScenario,
-    granularity,
-    setGranularity,
     reverseTarget,
     setReverseTarget,
     snapshot,

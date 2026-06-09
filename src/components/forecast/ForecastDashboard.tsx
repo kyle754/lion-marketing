@@ -1,19 +1,36 @@
 "use client";
 
+import { useMemo } from "react";
 import { useForecast } from "@/hooks/useForecast";
+import {
+  computeSinglePackageSnapshot,
+  getEffectiveRates,
+} from "@/lib/forecast/engine";
 import { SCENARIO_LABELS } from "@/lib/forecast/scenarios";
-import type { TimeGranularity } from "@/lib/forecast/types";
 import { CompoundingChart } from "./CompoundingChart";
 import { ExportPdfButton } from "./ExportPdfButton";
+import { ForecastCollapsible } from "./ForecastCollapsible";
+import { ForecastDisclaimer } from "./ForecastDisclaimer";
 import { FunnelViz } from "./FunnelViz";
 import { GrowthChart } from "./GrowthChart";
 import { InputPanel } from "./InputPanel";
 import { InvestmentChart } from "./InvestmentChart";
 import { KpiGrid } from "./KpiGrid";
+import { PackageIncludes } from "./PackageIncludes";
+import { RecommendedPackage } from "./RecommendedPackage";
 import { ReverseForecastPanel } from "./ReverseForecastPanel";
 import { ScenarioCompare } from "./ScenarioCompare";
-import { ForecastDisclaimer } from "./ForecastDisclaimer";
 import { ScenarioTabs } from "./ScenarioTabs";
+import { SuccessChecklist } from "./SuccessChecklist";
+import { WhatThisMeans } from "./WhatThisMeans";
+import { formatCurrency } from "@/lib/forecast/format";
+
+const TRUST_ITEMS = [
+  "Exclusive leads",
+  "OTP verified",
+  "Real-time delivery",
+  "Built around your sales process",
+] as const;
 
 export function ForecastDashboard() {
   const {
@@ -21,8 +38,6 @@ export function ForecastDashboard() {
     updateInput,
     scenario,
     setScenario,
-    granularity,
-    setGranularity,
     reverseTarget,
     setReverseTarget,
     snapshot,
@@ -32,103 +47,123 @@ export function ForecastDashboard() {
     reverseResult,
   } = useForecast();
 
+  const effectiveRates = useMemo(
+    () => getEffectiveRates(inputs, scenario),
+    [inputs, scenario]
+  );
+
+  const startingPackage = useMemo(() => {
+    const pkg = computeSinglePackageSnapshot(inputs, scenario);
+    return {
+      leadsPerPackage: pkg.leadsInPackage,
+      investment: pkg.totalLeadInvestment,
+      breakEvenSales: pkg.breakEvenSales,
+      salesClosed: pkg.salesClosed,
+      profit: pkg.profit,
+    };
+  }, [inputs, scenario]);
+
+  const scrollToPackage = () => {
+    document
+      .getElementById("lead-package")
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   return (
-    <div className="mx-auto max-w-[1600px] px-4 py-6 md:px-6 md:py-8">
-      <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-forecast-text md:text-3xl">
-            Lead Generation ROI Forecast
+    <div className="mx-auto max-w-[1600px] px-4 py-8 md:px-6 md:py-10">
+      <header className="mb-10 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+        <div className="max-w-2xl">
+          <h1 className="text-2xl font-bold tracking-tight text-forecast-text md:text-3xl lg:text-4xl">
+            Can a Lead Package Pay for Itself?
           </h1>
-          <p className="mt-2 max-w-xl text-sm text-forecast-muted">
-            12-month outlook from discrete lead packages — built for live sales
-            conversations.
+          <p className="mt-3 text-sm leading-relaxed text-forecast-muted md:text-base">
+            Use your real numbers to estimate appointments, sales, revenue,
+            profit, and break-even point before you buy.
           </p>
+          <div className="mt-5 text-xs text-forecast-muted md:text-sm">
+            {TRUST_ITEMS.join(" · ")}
+          </div>
         </div>
         <ExportPdfButton
           inputs={inputs}
           snapshot={snapshot}
           scenarios={allScenarios}
           projections={projections}
+          scenario={scenario}
           scenarioLabel={SCENARIO_LABELS[scenario]}
         />
-      </div>
+      </header>
 
-      <div className="grid gap-8 lg:grid-cols-[320px_1fr]">
+      <div className="grid gap-10 lg:grid-cols-[320px_1fr]">
         <InputPanel inputs={inputs} onChange={updateInput} />
 
-        <div className="min-w-0 space-y-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <ScenarioTabs
-              active={scenario}
-              inputs={inputs}
-              onChange={setScenario}
-            />
-            <GranularityToggle value={granularity} onChange={setGranularity} />
-          </div>
+        <div className="min-w-0 space-y-8">
+          <ScenarioTabs
+            active={scenario}
+            inputs={inputs}
+            onChange={setScenario}
+          />
 
           <KpiGrid snapshot={snapshot} />
 
-          <div className="grid gap-6 xl:grid-cols-2">
-            <FunnelViz
-              snapshot={snapshot}
-              dealSize={inputs.dealSize}
-              packageCount={inputs.leadPackagesPerYear}
-              costPerLead={inputs.costPerLead}
+          <WhatThisMeans
+            snapshot={snapshot}
+            costPerLead={inputs.costPerLead}
+            dealSize={inputs.dealSize}
+          />
+
+          <FunnelViz snapshot={snapshot} rates={effectiveRates} />
+
+          <ScenarioCompare scenarios={allScenarios} />
+
+          <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+            <RecommendedPackage
+              leadsPerPackage={startingPackage.leadsPerPackage}
+              pacingDays={inputs.fulfillmentPacingDays}
+              snapshot={{
+                ...snapshot,
+                totalLeadInvestment: startingPackage.investment,
+                breakEvenSales: startingPackage.breakEvenSales,
+                salesClosed: startingPackage.salesClosed,
+                profit: startingPackage.profit,
+              }}
+              onAdjustPackage={scrollToPackage}
             />
-            <ScenarioCompare scenarios={allScenarios} />
+            <PackageIncludes />
           </div>
 
-          <ReverseForecastPanel
-            target={reverseTarget}
-            onChange={setReverseTarget}
-            result={reverseResult}
-          />
-
-          <GrowthChart
-            data={projections}
-            breakEvenPeriod={breakEvenPeriod}
-            firstLeadBusinessDays={inputs.firstLeadBusinessDays}
-            fulfillmentPacingDays={inputs.fulfillmentPacingDays}
-            salesCycleDays={inputs.salesCycleDays}
-          />
-
-          <div className="grid gap-6 lg:grid-cols-2">
-            <InvestmentChart data={projections} />
-            <CompoundingChart data={projections} />
-          </div>
-
-          <CostSummary snapshot={snapshot} inputs={inputs} />
+          <SuccessChecklist />
 
           <ForecastDisclaimer />
+
+          <ForecastCollapsible
+            title="Advanced Forecast"
+            subtitle="Growth projection, investment charts, reverse forecast, and cost efficiency"
+          >
+            <div className="space-y-6">
+              <GrowthChart
+                data={projections}
+                breakEvenPeriod={breakEvenPeriod}
+                fulfillmentPacingDays={inputs.fulfillmentPacingDays}
+                salesCycleDays={inputs.salesCycleDays}
+              />
+
+              <div className="grid gap-6 lg:grid-cols-2">
+                <InvestmentChart data={projections} />
+                <CompoundingChart data={projections} />
+              </div>
+
+              <ReverseForecastPanel
+                target={reverseTarget}
+                onChange={setReverseTarget}
+                result={reverseResult}
+              />
+
+              <CostSummary snapshot={snapshot} inputs={inputs} />
+            </div>
+          </ForecastCollapsible>
         </div>
       </div>
-    </div>
-  );
-}
-
-function GranularityToggle({
-  value,
-  onChange,
-}: {
-  value: TimeGranularity;
-  onChange: (g: TimeGranularity) => void;
-}) {
-  return (
-    <div className="flex shrink-0 rounded-lg border border-forecast-border bg-forecast-surface p-0.5 shadow-sm">
-      {(["monthly", "weekly"] as const).map((g) => (
-        <button
-          key={g}
-          type="button"
-          onClick={() => onChange(g)}
-          className={`rounded-md px-3 py-1.5 text-xs font-medium capitalize ${
-            value === g
-              ? "bg-gold/15 text-forecast-text ring-1 ring-gold/30"
-              : "text-forecast-muted hover:text-forecast-text"
-          }`}
-        >
-          {g}
-        </button>
-      ))}
     </div>
   );
 }
@@ -141,21 +176,27 @@ function CostSummary({
   inputs: ReturnType<typeof useForecast>["inputs"];
 }) {
   return (
-    <div className="rounded-xl border border-forecast-border bg-forecast-surface p-5 shadow-forecast">
-      <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-forecast-muted">
+    <div className="rounded-xl border border-forecast-border bg-forecast-bg p-5">
+      <h3 className="mb-3 text-sm font-semibold text-forecast-text">
         Cost Efficiency
       </h3>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <MiniStat label="Cost per appointment" value={snapshot.costPerAppointment} />
-        <MiniStat label="Cost per held appt" value={snapshot.costPerHeldAppointment} />
+        <MiniStat
+          label="Cost per appointment"
+          value={snapshot.costPerAppointment}
+        />
+        <MiniStat
+          label="Cost per held appt"
+          value={snapshot.costPerHeldAppointment}
+        />
         <MiniStat label="CAC (cost per sale)" value={snapshot.costPerSale} />
         <MiniStat label="Revenue per lead" value={snapshot.revenuePerLead} />
       </div>
       <p className="mt-3 text-xs text-forecast-muted">
         {inputs.leadPackagesPerYear} package purchase
-        {inputs.leadPackagesPerYear === 1 ? "" : "s"} · first lead ~{" "}
-        {inputs.firstLeadBusinessDays} BD · {inputs.fulfillmentPacingDays}-day
-        pacing · {inputs.salesCycleDays}d lead-to-close (charts)
+        {inputs.leadPackagesPerYear === 1 ? "" : "s"} ·{" "}
+        {inputs.fulfillmentPacingDays}-day pacing · {inputs.salesCycleDays}d
+        lead-to-close
         {inputs.teamSize > 1 && ` · ${inputs.teamSize}× team scaling`}
       </p>
     </div>
@@ -163,16 +204,12 @@ function CostSummary({
 }
 
 function MiniStat({ label, value }: { label: string; value: number }) {
-  const formatted = new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(value);
-
   return (
     <div>
       <p className="text-xs text-forecast-muted">{label}</p>
-      <p className="mt-1 font-medium text-forecast-text">{formatted}</p>
+      <p className="mt-1 font-medium text-forecast-text">
+        {formatCurrency(value)}
+      </p>
     </div>
   );
 }

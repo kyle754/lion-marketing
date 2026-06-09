@@ -147,7 +147,10 @@ export function computeSinglePackageSnapshot(
     costPerSale: salesClosed > 0 ? investment / salesClosed : 0,
     revenue,
     profit,
-    roi: investment > 0 ? (revenue / investment) * 100 : 0,
+    breakEvenSales:
+      adjusted.dealSize > 0 ? Math.ceil(investment / adjusted.dealSize) : 0,
+    revenueMultiple: investment > 0 ? revenue / investment : 0,
+    trueRoi: investment > 0 ? (profit / investment) * 100 : 0,
     revenuePerLead: leadsPerPackage > 0 ? revenue / leadsPerPackage : 0,
     profitPerLead: leadsPerPackage > 0 ? profit / leadsPerPackage : 0,
     revenuePerAppointment:
@@ -183,7 +186,14 @@ export function computeForecast(
     costPerSale: salesClosed > 0 ? totalLeadInvestment / salesClosed : 0,
     revenue,
     profit,
-    roi: totalLeadInvestment > 0 ? (revenue / totalLeadInvestment) * 100 : 0,
+    breakEvenSales:
+      inputs.dealSize > 0
+        ? Math.ceil(totalLeadInvestment / inputs.dealSize)
+        : 0,
+    revenueMultiple:
+      totalLeadInvestment > 0 ? revenue / totalLeadInvestment : 0,
+    trueRoi:
+      totalLeadInvestment > 0 ? (profit / totalLeadInvestment) * 100 : 0,
     revenuePerLead: totalLeads > 0 ? revenue / totalLeads : 0,
     profitPerLead: totalLeads > 0 ? profit / totalLeads : 0,
     revenuePerAppointment:
@@ -298,7 +308,7 @@ export function computePeriodProjections(
   const purchasePeriods = getPackagePurchasePeriods(packages, periods);
 
   const firstLeadCalendarApprox = businessDaysToApproxCalendarDays(
-    adjusted.firstLeadBusinessDays
+    DEFAULT_FIRST_LEAD_BUSINESS_DAYS
   );
   const firstLeadPeriodOffset = delayToPeriodStartOffset(
     firstLeadCalendarApprox,
@@ -394,13 +404,15 @@ export function findBreakEvenPeriod(
   return null;
 }
 
+/** Fixed model assumption — not exposed as a user input */
+export const DEFAULT_FIRST_LEAD_BUSINESS_DAYS = 5;
+
 export const DEFAULT_INPUTS: ForecastInputs = {
   dealSize: 2500,
-  bookingRate: 35,
-  showRate: 70,
-  closeRate: 25,
+  bookingRate: 33,
+  showRate: 65,
+  closeRate: 20,
   teamSize: 1,
-  firstLeadBusinessDays: 5,
   fulfillmentPacingDays: 30,
   salesCycleDays: 14,
   leads: 200,

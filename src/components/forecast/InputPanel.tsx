@@ -1,6 +1,7 @@
 "use client";
 
 import type { ForecastInputs } from "@/lib/forecast/types";
+import { ForecastCollapsible } from "./ForecastCollapsible";
 import { InputField } from "./InputField";
 import { PackagePurchaseSelect } from "./LeadFrequencySelect";
 
@@ -10,37 +11,43 @@ interface InputPanelProps {
     key: K,
     value: ForecastInputs[K]
   ) => void;
+  packageSectionId?: string;
 }
 
-export function InputPanel({ inputs, onChange }: InputPanelProps) {
+export function InputPanel({
+  inputs,
+  onChange,
+  packageSectionId = "lead-package",
+}: InputPanelProps) {
   const totalLeads =
     inputs.leads *
     Math.max(1, inputs.teamSize) *
     Math.max(1, inputs.leadPackagesPerYear);
 
-  const approxFirstCalendar = Math.ceil((inputs.firstLeadBusinessDays * 7) / 5);
-
   return (
-    <aside className="space-y-6">
+    <aside className="space-y-6 lg:sticky lg:top-20 lg:self-start">
       <div>
         <h2 className="text-lg font-semibold text-forecast-text">
-          Business Metrics
+          Your Numbers
         </h2>
         <p className="mt-1 text-sm text-forecast-muted">
-          Enter the prospect&apos;s real numbers
+          Enter the prospect&apos;s real conversion and deal economics
         </p>
       </div>
 
       <div className="space-y-4 rounded-xl border border-forecast-border bg-forecast-surface p-4 shadow-forecast">
+        <p className="text-xs font-semibold uppercase tracking-wider text-forecast-muted">
+          Your Sales Numbers
+        </p>
         <InputField
-          label="Average deal size"
+          label="Average deal size / commission"
           prefix="$"
           value={inputs.dealSize}
           onChange={(v) => onChange("dealSize", v)}
           step={100}
         />
         <InputField
-          label="Booking rate"
+          label="Lead-to-appointment rate"
           hint="% of leads → appts"
           suffix="%"
           value={inputs.bookingRate}
@@ -49,7 +56,7 @@ export function InputPanel({ inputs, onChange }: InputPanelProps) {
           step={0.5}
         />
         <InputField
-          label="Show rate"
+          label="Appointment show rate"
           hint="% of booked → held"
           suffix="%"
           value={inputs.showRate}
@@ -66,64 +73,21 @@ export function InputPanel({ inputs, onChange }: InputPanelProps) {
           max={100}
           step={0.5}
         />
-        <InputField
-          label="Team size"
-          hint="Scales projection"
-          value={inputs.teamSize}
-          onChange={(v) => onChange("teamSize", Math.max(1, Math.round(v)))}
-          min={1}
-          step={1}
-        />
-        <InputField
-          label="First lead delivery"
-          hint="Biz days after signup (we model delivery)"
-          suffix=" BD"
-          value={inputs.firstLeadBusinessDays}
-          onChange={(v) => onChange("firstLeadBusinessDays", Math.max(0, v))}
-          min={0}
-          step={1}
-        />
-        <InputField
-          label="Package pacing window"
-          hint="Days to drip full package"
-          suffix="days"
-          value={inputs.fulfillmentPacingDays}
-          onChange={(v) =>
-            onChange("fulfillmentPacingDays", Math.max(1, Math.round(v)))
-          }
-          min={1}
-          step={1}
-        />
-        <InputField
-          label="Sales cycle"
-          hint="Lead generated → deal closed"
-          suffix="days"
-          value={inputs.salesCycleDays}
-          onChange={(v) => onChange("salesCycleDays", v)}
-          step={1}
-        />
-        <p className="rounded-lg bg-forecast-bg px-3 py-2 text-xs text-forecast-muted">
-          Example: {inputs.leads} leads over {inputs.fulfillmentPacingDays}{" "}
-          pacing days ≈{" "}
-          {((inputs.leads * 7) / inputs.fulfillmentPacingDays).toFixed(1)}{" "}
-          leads/week (approx.). First modeled delivery ≈{" "}
-          <span className="font-medium text-forecast-text">
-            {approxFirstCalendar} calendar days
-          </span>{" "}
-          (~{inputs.firstLeadBusinessDays} business days).
-        </p>
       </div>
 
-      <div>
-        <h2 className="text-lg font-semibold text-forecast-text">
+      <div
+        id={packageSectionId}
+        className="space-y-4 rounded-xl border border-forecast-border bg-forecast-surface p-4 shadow-forecast scroll-mt-24"
+      >
+        <p className="text-xs font-semibold uppercase tracking-wider text-forecast-muted">
           Lead Package
-        </h2>
-        <p className="mt-1 text-sm text-forecast-muted">
-          One purchase — not an annual bundle
         </p>
-      </div>
-
-      <div className="space-y-4 rounded-xl border border-forecast-border bg-forecast-surface p-4 shadow-forecast">
+        <div className="rounded-lg border border-dashed border-forecast-border bg-forecast-bg px-3 py-2.5">
+          <p className="text-sm font-medium text-forecast-text">Lead type</p>
+          <p className="mt-0.5 text-xs text-forecast-muted">
+            Life insurance / IUL — exclusive intent leads
+          </p>
+        </div>
         <InputField
           label="Leads per package"
           hint="Per rep, before team scale"
@@ -138,24 +102,59 @@ export function InputPanel({ inputs, onChange }: InputPanelProps) {
           onChange={(v) => onChange("costPerLead", v)}
           step={1}
         />
-        <PackagePurchaseSelect
-          value={inputs.leadPackagesPerYear}
-          onChange={(v) => onChange("leadPackagesPerYear", v)}
+        <InputField
+          label="Package pacing window"
+          hint="Days to drip full package"
+          suffix="days"
+          value={inputs.fulfillmentPacingDays}
+          onChange={(v) =>
+            onChange("fulfillmentPacingDays", Math.max(1, Math.round(v)))
+          }
+          min={1}
+          step={1}
         />
         <p className="rounded-lg bg-forecast-bg px-3 py-2 text-xs text-forecast-muted">
           <span className="font-medium text-forecast-text">
             {totalLeads.toLocaleString()} leads
           </span>{" "}
-          across {inputs.leadPackagesPerYear} purchase
+          modeled across {inputs.leadPackagesPerYear} purchase
           {inputs.leadPackagesPerYear === 1 ? "" : "s"} in 12 months
-          {inputs.leadPackagesPerYear === 1 && (
-            <span className="mt-1 block">
-              Timeline tapers after pacing + close — no more packages unless you
-              add purchases above.
-            </span>
-          )}
         </p>
       </div>
+
+      <ForecastCollapsible
+        title="Advanced assumptions"
+        subtitle="Team size, sales cycle, and purchase count"
+      >
+        <div className="space-y-4">
+          <InputField
+            label="Team size"
+            hint="Scales projection"
+            value={inputs.teamSize}
+            onChange={(v) => onChange("teamSize", Math.max(1, Math.round(v)))}
+            min={1}
+            step={1}
+          />
+          <InputField
+            label="Sales cycle"
+            hint="Lead generated → deal closed"
+            suffix="days"
+            value={inputs.salesCycleDays}
+            onChange={(v) => onChange("salesCycleDays", v)}
+            step={1}
+          />
+          <PackagePurchaseSelect
+            value={inputs.leadPackagesPerYear}
+            onChange={(v) => onChange("leadPackagesPerYear", v)}
+          />
+          <p className="text-xs leading-relaxed text-forecast-muted">
+            Example: {inputs.leads} leads over {inputs.fulfillmentPacingDays}{" "}
+            pacing days ≈{" "}
+            {((inputs.leads * 7) / inputs.fulfillmentPacingDays).toFixed(1)}{" "}
+            leads/week (approx.).
+          </p>
+        </div>
+      </ForecastCollapsible>
     </aside>
   );
 }

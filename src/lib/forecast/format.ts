@@ -23,3 +23,7 @@ export function formatNumber(value: number, decimals = 0): string {
     maximumFractionDigits: decimals,
   }).format(value);
 }
+
+export function formatMultiple(value: number, decimals = 2): string {
+  return `${value.toFixed(decimals)}x`;
+}

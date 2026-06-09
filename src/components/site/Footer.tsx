@@ -1,14 +1,15 @@
 import Image from "next/image";
 import Link from "next/link";
-import { FOOTER, PRODUCTS, SITE } from "@/config/site";
+import { FOOTER, NAV_LINKS, SITE } from "@/config/site";
 
 export function Footer() {
   const year = new Date().getFullYear();
+  const footerLinks = NAV_LINKS.filter((link) => link.href !== "#book");
 
   return (
     <footer className="border-t border-forecast-border bg-forecast-bg py-12">
       <div className="mx-auto max-w-content px-4 md:px-6">
-        <div className="grid gap-10 md:grid-cols-[1.2fr_1fr_1fr]">
+        <div className="grid gap-10 md:grid-cols-[1.2fr_1fr]">
           <div>
             <Image
               src="/images/logo-horizontal-dark.png"
@@ -20,40 +21,20 @@ export function Footer() {
             <p className="mt-4 max-w-sm text-sm leading-relaxed text-forecast-muted">
               {FOOTER.blurb}
             </p>
-            <p className="mt-3 text-xs text-gold/80">{FOOTER.tagline}</p>
           </div>
 
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-forecast-text">
-              Products supported
-            </p>
-            <ul className="mt-3 space-y-2 text-sm text-forecast-muted">
-              {PRODUCTS.map((p) => (
-                <li key={p}>{p}</li>
-              ))}
-            </ul>
-          </div>
-
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-forecast-text">
-              Company
+              Explore
             </p>
             <ul className="mt-3 space-y-2 text-sm">
-              <li>
-                <a href="#approach" className="text-forecast-muted hover:text-gold">
-                  Our Approach
-                </a>
-              </li>
-              <li>
-                <a href="#process" className="text-forecast-muted hover:text-gold">
-                  The System
-                </a>
-              </li>
-              <li>
-                <a href="#faq" className="text-forecast-muted hover:text-gold">
-                  FAQ
-                </a>
-              </li>
+              {footerLinks.map((link) => (
+                <li key={link.href}>
+                  <a href={link.href} className="text-forecast-muted hover:text-gold">
+                    {link.label}
+                  </a>
+                </li>
+              ))}
               <li>
                 <Link href="/forecast" className="text-forecast-muted hover:text-gold">
                   Growth Forecast
@@ -78,7 +59,7 @@ export function Footer() {
             © {year} {SITE.legalName}. All rights reserved.
           </p>
           <p className="text-center md:text-right">
-            Client acquisition for insurance producers &amp; advisors nationwide
+            Nationwide · Insurance producers &amp; advisors
           </p>
         </div>
       </div>

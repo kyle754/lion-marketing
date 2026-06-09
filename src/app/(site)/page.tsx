@@ -6,8 +6,6 @@ import { ForecastCTA } from "@/components/site/ForecastCTA";
 import { GrowthSection } from "@/components/site/GrowthSection";
 import { Hero } from "@/components/site/Hero";
 import { HowItWorks } from "@/components/site/HowItWorks";
-import { Outcomes } from "@/components/site/Outcomes";
-import { Standards } from "@/components/site/Standards";
 
 export default function Home() {
   return (
@@ -15,10 +13,8 @@ export default function Home() {
       <Hero />
       <GrowthSection />
       <AdditiveSection />
-      <Outcomes />
       <HowItWorks />
       <FitSection />
-      <Standards />
       <ForecastCTA />
       <FAQ />
       <FinalCTA />

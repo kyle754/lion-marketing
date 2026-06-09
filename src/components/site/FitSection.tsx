@@ -3,7 +3,10 @@ import { Reveal, RevealStagger } from "./motion/Reveal";
 
 export function FitSection() {
   return (
-    <section className="border-b border-forecast-border bg-forecast-surface py-16 md:py-24">
+    <section
+      id={WHO_SECTION.id}
+      className="scroll-mt-20 border-b border-forecast-border bg-forecast-surface py-16 md:py-24"
+    >
       <div className="mx-auto max-w-content px-4 md:px-6">
         <div className="grid gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
           <Reveal className="lg:sticky lg:top-24">

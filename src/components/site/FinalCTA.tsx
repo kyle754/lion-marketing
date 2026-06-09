@@ -33,20 +33,6 @@ export function FinalCTA() {
             </Button>
           </div>
         </Reveal>
-
-        <Reveal delay={140}>
-          <div className="mx-auto mt-10 flex max-w-3xl flex-col items-center gap-4 border-t border-white/10 pt-8 sm:flex-row sm:justify-center sm:gap-0">
-            {FINAL_CTA.assurances.map((item, i) => (
-              <div
-                key={item.label}
-                className={`px-6 text-center ${i > 0 ? "sm:border-l sm:border-white/10" : ""}`}
-              >
-                <p className="font-semibold text-gold">{item.label}</p>
-                <p className="mt-1 text-sm text-forecast-bg/70">{item.detail}</p>
-              </div>
-            ))}
-          </div>
-        </Reveal>
       </div>
     </section>
   );

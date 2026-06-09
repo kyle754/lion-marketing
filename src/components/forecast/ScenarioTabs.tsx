@@ -1,11 +1,7 @@
 "use client";
 
 import { getEffectiveRates } from "@/lib/forecast/engine";
-import {
-  SCENARIO_DESCRIPTIONS,
-  SCENARIO_DETAIL,
-  SCENARIO_LABELS,
-} from "@/lib/forecast/scenarios";
+import { SCENARIO_LABELS } from "@/lib/forecast/scenarios";
 import type { ForecastInputs, ScenarioKey } from "@/lib/forecast/types";
 import { formatPercent } from "@/lib/forecast/format";
 
@@ -21,36 +17,33 @@ export function ScenarioTabs({ active, inputs, onChange }: ScenarioTabsProps) {
   const rates = getEffectiveRates(inputs, active);
 
   return (
-    <div className="space-y-3">
+    <div className="flex flex-wrap items-center gap-3">
+      <span className="text-xs font-medium uppercase tracking-wider text-forecast-muted">
+        Viewing
+      </span>
       <div className="flex flex-wrap gap-2">
         {SCENARIOS.map((key) => (
           <button
             key={key}
             type="button"
             onClick={() => onChange(key)}
-            className={`rounded-lg px-4 py-2 text-sm font-medium transition-all ${
+            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all sm:px-4 sm:py-2 sm:text-sm ${
               active === key
-                ? "bg-gold text-charcoal-dark shadow-md"
-                : "border border-forecast-border bg-forecast-surface text-forecast-muted shadow-sm hover:border-gold/40 hover:text-forecast-text"
+                ? "bg-gold text-charcoal-dark shadow-sm"
+                : "border border-forecast-border bg-forecast-surface text-forecast-muted hover:border-gold/40 hover:text-forecast-text"
             }`}
           >
             {SCENARIO_LABELS[key]}
           </button>
         ))}
       </div>
-      <div className="rounded-lg border border-forecast-border bg-forecast-elevated px-4 py-3 text-xs leading-relaxed text-forecast-muted">
-        <p className="font-medium text-forecast-text">
-          {SCENARIO_LABELS[active]}: {SCENARIO_DESCRIPTIONS[active]}
+      {active !== "expected" && (
+        <p className="w-full text-xs text-forecast-muted sm:w-auto">
+          Effective rates: {formatPercent(rates.bookingRate, 1)} booking ·{" "}
+          {formatPercent(rates.showRate, 1)} show ·{" "}
+          {formatPercent(rates.closeRate, 1)} close
         </p>
-        <p className="mt-2">{SCENARIO_DETAIL[active]}</p>
-        {active !== "expected" && (
-          <p className="mt-2 text-forecast-text">
-            Effective: {formatPercent(rates.bookingRate, 1)} booking ·{" "}
-            {formatPercent(rates.showRate, 1)} show (unchanged) ·{" "}
-            {formatPercent(rates.closeRate, 1)} close
-          </p>
-        )}
-      </div>
+      )}
     </div>
   );
 }

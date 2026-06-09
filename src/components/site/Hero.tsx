@@ -44,31 +44,12 @@ export function Hero() {
 
         <Reveal delay={120}>
           <div className="relative overflow-hidden rounded-2xl border border-forecast-border bg-forecast-surface p-4 shadow-forecast-lg sm:p-5 md:p-6">
-            <div className="mb-3 flex items-center justify-between gap-3 sm:absolute sm:right-4 sm:top-4 sm:mb-0">
-              <div className="min-[540px]:hidden" aria-hidden />
+            <div className="mb-3 flex items-center justify-end gap-3 sm:absolute sm:right-4 sm:top-4 sm:mb-0">
               <span className="shrink-0 rounded-full border border-gold/30 bg-gold/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-gold">
                 Live flow
               </span>
             </div>
             <PipelineFlowGraphic className="mt-1 sm:mt-2" />
-            <RevealStagger
-              className="mt-4 grid gap-3 sm:mt-5 sm:grid-cols-3"
-              staggerMs={100}
-            >
-              {HERO.pillars.map((item) => (
-                <div
-                  key={item.title}
-                  className="rounded-xl border border-forecast-border bg-forecast-bg/80 px-4 py-3 card-lift sm:px-3"
-                >
-                  <p className="text-xs font-semibold uppercase tracking-wide text-gold sm:text-[11px]">
-                    {item.title}
-                  </p>
-                  <p className="mt-1 text-sm leading-snug text-forecast-muted sm:text-[11px]">
-                    {item.detail}
-                  </p>
-                </div>
-              ))}
-            </RevealStagger>
           </div>
         </Reveal>
       </div>

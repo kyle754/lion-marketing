@@ -3,9 +3,9 @@ import Image from "next/image";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "ROI Forecast | Lion Marketing",
+  title: "Lead Package Forecast | Lion Marketing",
   description:
-    "Lead generation ROI forecasting tool for Lion Marketing sales presentations.",
+    "Estimate whether a lead package can pay for itself using your real conversion numbers.",
 };
 
 export default function ForecastLayout({
@@ -27,7 +27,7 @@ export default function ForecastLayout({
               priority
             />
             <span className="hidden border-l border-forecast-border pl-3 text-sm font-medium text-gold sm:inline">
-              ROI Forecast
+              Package Forecast
             </span>
           </Link>
           <Link

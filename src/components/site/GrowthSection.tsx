@@ -22,12 +22,7 @@ export function GrowthSection() {
                   </span>
                 </>
               }
-              description={
-                <>
-                  {GROWTH_SECTION.body}
-                  <span className="mt-3 block text-sm">{GROWTH_SECTION.body2}</span>
-                </>
-              }
+              description={GROWTH_SECTION.body}
             />
           </Reveal>
 

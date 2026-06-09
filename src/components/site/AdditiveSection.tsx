@@ -16,7 +16,10 @@ const benefitIcons = {
 
 export function AdditiveSection() {
   return (
-    <section className="relative overflow-hidden border-b border-forecast-border bg-[#FCFBF7] py-16 md:py-24">
+    <section
+      id={ADDITIVE_SECTION.id}
+      className="scroll-mt-20 relative overflow-hidden border-b border-forecast-border bg-[#FCFBF7] py-16 md:py-24"
+    >
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold/30 to-transparent" />
 
       <div className="mx-auto max-w-content px-4 md:px-6">

@@ -1,14 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import type { ForecastInputs, ForecastSnapshot, PeriodProjection } from "@/lib/forecast/types";
+import type {
+  ForecastInputs,
+  ForecastSnapshot,
+  PeriodProjection,
+  ScenarioKey,
+} from "@/lib/forecast/types";
 
 interface ExportPdfButtonProps {
   inputs: ForecastInputs;
   snapshot: ForecastSnapshot;
-  scenarios: Record<"conservative" | "expected" | "aggressive", ForecastSnapshot>;
+  scenarios: Record<ScenarioKey, ForecastSnapshot>;
   projections: PeriodProjection[];
+  scenario: ScenarioKey;
   scenarioLabel: string;
+  preparedFor?: string;
 }
 
 export function ExportPdfButton(props: ExportPdfButtonProps) {

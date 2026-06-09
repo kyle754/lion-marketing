@@ -11,6 +11,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { DEFAULT_FIRST_LEAD_BUSINESS_DAYS } from "@/lib/forecast/engine";
 import { CHART } from "@/lib/forecast/chartTheme";
 import type { PeriodProjection } from "@/lib/forecast/types";
 import { formatCurrency } from "@/lib/forecast/format";
@@ -18,31 +19,26 @@ import { formatCurrency } from "@/lib/forecast/format";
 interface GrowthChartProps {
   data: PeriodProjection[];
   breakEvenPeriod: number | null;
-  firstLeadBusinessDays: number;
   fulfillmentPacingDays: number;
   salesCycleDays: number;
 }
 
 /** ~ calendar days from purchase until revenue from first drip slice (order of magnitude) */
-function approxCycleHint(
-  firstBd: number,
-  pacingDays: number,
-  salesCycle: number
-): number {
-  const approxFirstCal = Math.ceil((Math.max(0, firstBd) * 7) / 5);
+function approxCycleHint(pacingDays: number, salesCycle: number): number {
+  const approxFirstCal = Math.ceil(
+    (Math.max(0, DEFAULT_FIRST_LEAD_BUSINESS_DAYS) * 7) / 5
+  );
   return approxFirstCal + Math.ceil(pacingDays / 2) + salesCycle;
 }
 
 export function GrowthChart({
   data,
   breakEvenPeriod,
-  firstLeadBusinessDays,
   fulfillmentPacingDays,
   salesCycleDays,
 }: GrowthChartProps) {
   const hintMo = Math.round(
-    approxCycleHint(firstLeadBusinessDays, fulfillmentPacingDays, salesCycleDays) /
-      30
+    approxCycleHint(fulfillmentPacingDays, salesCycleDays) / 30
   );
 
   return (
@@ -51,17 +47,15 @@ export function GrowthChart({
         Growth Projection
       </h3>
       <p className="mb-4 text-xs text-forecast-muted">
-        Revenue trails purchases: leads drip after first delivery (≈{" "}
-        {firstLeadBusinessDays} BD), across {fulfillmentPacingDays} pacing days,
-        then {salesCycleDays}d lead → close. Activity flattens without new
-        packages.
-        {(firstLeadBusinessDays > 0 || fulfillmentPacingDays > 0 || salesCycleDays > 0) &&
-          hintMo > 0 && (
-            <span>
-              {" "}
-              · Midpoint cash ~{hintMo} mo from buy (illustrative).
-            </span>
-          )}
+        Revenue trails purchases: leads drip across {fulfillmentPacingDays}{" "}
+        pacing days, then {salesCycleDays}d lead → close. Activity flattens
+        without new packages.
+        {hintMo > 0 && (
+          <span>
+            {" "}
+            · Midpoint cash ~{hintMo} mo from buy (illustrative).
+          </span>
+        )}
         {breakEvenPeriod && (
           <span className="ml-1 font-medium text-gold">
             · Break-even: period {breakEvenPeriod}

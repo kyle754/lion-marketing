@@ -2,26 +2,83 @@
 
 import type { ForecastSnapshot } from "@/lib/forecast/types";
 import { SCENARIO_LABELS } from "@/lib/forecast/scenarios";
-import { formatCurrency, formatPercent } from "@/lib/forecast/format";
+import {
+  formatCurrency,
+  formatMultiple,
+  formatNumber,
+} from "@/lib/forecast/format";
 
 interface ScenarioCompareProps {
   scenarios: Record<"conservative" | "expected" | "aggressive", ForecastSnapshot>;
 }
 
-export function ScenarioCompare({ scenarios }: ScenarioCompareProps) {
-  const keys = ["conservative", "expected", "aggressive"] as const;
+const SCENARIO_KEYS = ["conservative", "expected", "aggressive"] as const;
 
+const METRICS = [
+  { label: "Revenue", field: "revenue" as const, format: "currency" as const },
+  { label: "Profit", field: "profit" as const, format: "currency" as const },
+  {
+    label: "Revenue Multiple",
+    field: "revenueMultiple" as const,
+    format: "multiple" as const,
+  },
+  { label: "Sales", field: "salesClosed" as const, format: "number" as const },
+];
+
+function formatValue(
+  value: number,
+  format: "currency" | "multiple" | "number"
+): string {
+  if (format === "currency") return formatCurrency(value);
+  if (format === "multiple") return formatMultiple(value);
+  return formatNumber(value, 1);
+}
+
+export function ScenarioCompare({ scenarios }: ScenarioCompareProps) {
   return (
-    <div className="rounded-xl border border-forecast-border bg-forecast-surface p-5 shadow-forecast">
-      <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-forecast-muted">
+    <section className="min-w-0 rounded-xl border border-forecast-border bg-forecast-surface p-5 shadow-forecast">
+      <h3 className="text-base font-semibold text-forecast-text">
         Scenario Comparison
       </h3>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[480px] text-sm">
+      <p className="mt-1 text-sm text-forecast-muted">
+        Conservative, expected, and strong outcomes using the same package
+      </p>
+
+      <div className="mt-5 space-y-3 sm:hidden">
+        {SCENARIO_KEYS.map((key) => (
+          <div
+            key={key}
+            className={`rounded-lg border border-forecast-border bg-forecast-bg p-3 ${
+              key === "expected" ? "ring-1 ring-gold/30" : ""
+            }`}
+          >
+            <p
+              className={`mb-2 text-xs font-semibold uppercase tracking-wider ${
+                key === "expected" ? "text-gold" : "text-forecast-muted"
+              }`}
+            >
+              {SCENARIO_LABELS[key]}
+            </p>
+            <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
+              {METRICS.map(({ label, field, format }) => (
+                <div key={field}>
+                  <dt className="text-xs text-forecast-muted">{label}</dt>
+                  <dd className="font-medium text-forecast-text">
+                    {formatValue(scenarios[key][field] as number, format)}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-5 hidden overflow-x-auto sm:block">
+        <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-forecast-border text-left text-forecast-muted">
               <th className="pb-3 pr-4 font-medium">Metric</th>
-              {keys.map((k) => (
+              {SCENARIO_KEYS.map((k) => (
                 <th key={k} className="pb-3 pr-4 font-medium">
                   {SCENARIO_LABELS[k]}
                 </th>
@@ -29,14 +86,19 @@ export function ScenarioCompare({ scenarios }: ScenarioCompareProps) {
             </tr>
           </thead>
           <tbody className="text-forecast-text">
-            <CompareRow label="Revenue" scenarios={scenarios} field="revenue" format="currency" />
-            <CompareRow label="Profit" scenarios={scenarios} field="profit" format="currency" />
-            <CompareRow label="ROI (Rev÷Inv)" scenarios={scenarios} field="roi" format="percent" />
-            <CompareRow label="Sales" scenarios={scenarios} field="salesClosed" format="number" />
+            {METRICS.map(({ label, field, format }) => (
+              <CompareRow
+                key={field}
+                label={label}
+                scenarios={scenarios}
+                field={field}
+                format={format}
+              />
+            ))}
           </tbody>
         </table>
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -49,25 +111,17 @@ function CompareRow({
   label: string;
   scenarios: ScenarioCompareProps["scenarios"];
   field: keyof ForecastSnapshot;
-  format: "currency" | "percent" | "number";
+  format: "currency" | "multiple" | "number";
 }) {
-  const keys = ["conservative", "expected", "aggressive"] as const;
-  const fmt = (v: number) =>
-    format === "currency"
-      ? formatCurrency(v)
-      : format === "percent"
-        ? formatPercent(v)
-        : v.toFixed(1);
-
   return (
     <tr className="border-b border-forecast-border/60">
       <td className="py-3 pr-4 text-forecast-muted">{label}</td>
-      {keys.map((k) => (
+      {SCENARIO_KEYS.map((k) => (
         <td
           key={k}
           className={`py-3 pr-4 ${k === "expected" ? "font-medium text-gold" : ""}`}
         >
-          {fmt(scenarios[k][field] as number)}
+          {formatValue(scenarios[k][field] as number, format)}
         </td>
       ))}
     </tr>

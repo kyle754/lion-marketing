@@ -14,8 +14,6 @@ export interface BusinessInputs {
   showRate: number;
   closeRate: number;
   teamSize: number;
-  /** Business days until the first lead from a new package is delivered */
-  firstLeadBusinessDays: number;
   /** Calendar days over which the full package is paced (e.g. 100 leads over 30 days) */
   fulfillmentPacingDays: number;
   /** Days from lead generated to deal closed */
@@ -50,8 +48,12 @@ export interface CostMetrics {
 export interface RevenueMetrics {
   revenue: number;
   profit: number;
-  /** Revenue ÷ investment × 100 */
-  roi: number;
+  /** Sales needed to recover lead investment at average deal size */
+  breakEvenSales: number;
+  /** Revenue ÷ investment (e.g. 2.38) */
+  revenueMultiple: number;
+  /** Profit ÷ investment × 100 */
+  trueRoi: number;
   revenuePerLead: number;
   /** Net profit ÷ total leads */
   profitPerLead: number;
