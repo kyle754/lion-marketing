@@ -6,6 +6,7 @@
   --navy: #0c1b2a;
   --navy-2: #142b3d;
   --champagne: #c7a76b;
+  --champagne-ink: #765715;
   --champagne-pale: #e5d6b6;
   --slate: #5e6870;
   --rule: rgba(12, 27, 42, 0.14);
@@ -408,7 +409,7 @@ h1 {
 
 h1 em,
 h2 em {
-  color: var(--champagne);
+  color: var(--champagne-ink);
   font-weight: 400;
 }
 
@@ -711,7 +712,7 @@ h2 em {
 }
 
 .proof-items strong {
-  color: var(--champagne);
+  color: var(--champagne-ink);
 }
 
 .section {
@@ -816,7 +817,7 @@ h2 em {
 }
 
 .step-number {
-  color: var(--champagne);
+  color: var(--champagne-ink);
   font-family: var(--serif);
   font-size: 38px;
 }
@@ -966,7 +967,7 @@ h2 em {
 
 .guide-card > span,
 .related-card > span {
-  color: var(--champagne);
+  color: var(--champagne-ink);
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.14em;
@@ -1352,7 +1353,7 @@ h2 em {
 }
 
 .product-grid span {
-  color: rgba(12, 27, 42, 0.48);
+  color: rgba(12, 27, 42, 0.74);
   font-size: 9px;
   letter-spacing: 0.1em;
 }
@@ -1575,7 +1576,7 @@ footer {
   gap: 24px;
   padding-top: 24px;
   border-top: 1px solid rgba(255, 255, 255, 0.12);
-  color: rgba(255, 253, 248, 0.45);
+  color: rgba(255, 253, 248, 0.72);
   font-size: 10px;
 }
 
@@ -1591,6 +1592,20 @@ footer {
 @keyframes rise {
   from { transform: scaleY(0); }
   to { transform: scaleY(1); }
+}
+
+@supports (content-visibility: auto) {
+  .section,
+  .final-cta,
+  footer,
+  .qualification-band,
+  .pillar-content,
+  .related-section,
+  .pillar-faq,
+  .pillar-cta {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 900px;
+  }
 }
 
 @media (max-width: 1100px) {
