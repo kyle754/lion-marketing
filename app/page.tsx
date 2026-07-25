@@ -393,7 +393,8 @@ export default function Home() {
             title="Schedule a lead volume and pricing call with Lion Marketing"
             id="19xLmsQpIvEy1VHenF6x_1784589844943"
             scrolling="yes"
-            loading="eager"
+            loading="lazy"
+            referrerPolicy="strict-origin-when-cross-origin"
           />
         </div>
         <span className="cta-caption">30-minute fit call · Clear next steps · No obligation</span>
