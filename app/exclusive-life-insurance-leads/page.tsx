@@ -1,16 +1,12 @@
-import type { Metadata } from "next";
 import { PillarPage, type PillarPageData } from "../components/pillar-page";
+import { createPageMetadata } from "../lib/seo";
 
-export const metadata: Metadata = {
+export const metadata = createPageMetadata({
   title: "Exclusive Life Insurance Leads | Lion Marketing",
   description: "Learn how exclusive life insurance leads work, what exclusivity changes, how leads are verified and delivered, and what agents should expect.",
-  alternates: { canonical: "https://lionmarketingai.com/exclusive-life-insurance-leads" },
-  openGraph: {
-    title: "Exclusive Life Insurance Leads | Lion Marketing",
-    description: "A clear guide to exclusive life insurance leads for agents and agencies.",
-    url: "https://lionmarketingai.com/exclusive-life-insurance-leads",
-  },
-};
+  pathname: "/exclusive-life-insurance-leads",
+  socialDescription: "A clear guide to exclusive life insurance leads for agents and agencies.",
+});
 
 const data: PillarPageData = {
   slug: "exclusive-life-insurance-leads",

@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 const productNavigation = [
   { href: "/final-expense-leads", label: "Final Expense" },
   { href: "/term-life-insurance-leads", label: "Term Life" },
@@ -21,26 +23,26 @@ const companyNavigation = [
 export function SiteHeader() {
   return (
     <header className="site-header">
-      <a className="brand" href="/" aria-label="Lion Marketing home">
+      <Link className="brand" href="/" aria-label="Lion Marketing home">
         <span className="brand-mark">LM</span>
         <span className="brand-name">
           <strong>Lion</strong>
           <span>Marketing</span>
         </span>
-      </a>
+      </Link>
 
       <nav className="nav-links" aria-label="Primary navigation">
-        <a href="/life-insurance-leads">Life Insurance Leads</a>
+        <Link href="/life-insurance-leads">Life Insurance Leads</Link>
         <details className="product-nav">
           <summary>Lead Products <span aria-hidden="true">+</span></summary>
           <nav aria-label="Lead products">
             {productNavigation.map((item) => (
-              <a href={item.href} key={item.href}>{item.label} Leads</a>
+              <Link href={item.href} key={item.href}>{item.label} Leads</Link>
             ))}
           </nav>
         </details>
-        <a href="/exclusive-life-insurance-leads">Exclusive Leads</a>
-        <a href="/#how-it-works">How It Works</a>
+        <Link href="/exclusive-life-insurance-leads">Exclusive Leads</Link>
+        <Link href="/#how-it-works">How It Works</Link>
       </nav>
 
       <div className="nav-actions">
@@ -50,12 +52,12 @@ export function SiteHeader() {
         <details className="mobile-nav">
           <summary>Menu <span aria-hidden="true">+</span></summary>
           <nav className="mobile-nav-panel" aria-label="Mobile navigation">
-            <a className="mobile-nav-home" href="/">Home</a>
+            <Link className="mobile-nav-home" href="/">Home</Link>
             <details className="mobile-nav-group" open>
               <summary>Lead Products <span aria-hidden="true">+</span></summary>
               <div>
                 {productNavigation.map((item) => (
-                  <a href={item.href} key={item.href}>{item.label} Leads</a>
+                  <Link href={item.href} key={item.href}>{item.label} Leads</Link>
                 ))}
               </div>
             </details>
@@ -63,7 +65,7 @@ export function SiteHeader() {
               <summary>Lead Guides <span aria-hidden="true">+</span></summary>
               <div>
                 {resourceNavigation.map((item) => (
-                  <a href={item.href} key={item.href}>{item.label}</a>
+                  <Link href={item.href} key={item.href}>{item.label}</Link>
                 ))}
               </div>
             </details>
@@ -71,16 +73,16 @@ export function SiteHeader() {
               <summary>About Lion Marketing <span aria-hidden="true">+</span></summary>
               <div>
                 {companyNavigation.map((item) => (
-                  <a href={item.href} key={item.href}>{item.label}</a>
+                  <Link href={item.href} key={item.href}>{item.label}</Link>
                 ))}
                 <a href="https://app.thelistinglion.com">Agent Login</a>
               </div>
             </details>
           </nav>
         </details>
-        <a className="button button-small" href="/#book">
+        <Link className="button button-small" href="/#book">
           Check availability <span aria-hidden="true">↗</span>
-        </a>
+        </Link>
       </div>
     </header>
   );
@@ -91,10 +93,10 @@ export function SiteFooter() {
     <footer>
       <div className="footer-main">
         <div className="footer-brand-block">
-          <a className="brand footer-brand" href="/" aria-label="Lion Marketing home">
+          <Link className="brand footer-brand" href="/" aria-label="Lion Marketing home">
             <span className="brand-mark">LM</span>
             <span className="brand-name"><strong>Lion</strong><span>Marketing</span></span>
-          </a>
+          </Link>
           <p>
             Exclusive, campaign-qualified insurance leads built around your
             product, markets, and team capacity.
@@ -105,31 +107,32 @@ export function SiteFooter() {
         <nav className="footer-column" aria-label="Lead products">
           <p className="footer-heading">Lead Products</p>
           {productNavigation.map((item) => (
-            <a href={item.href} key={item.href}>{item.label} Leads</a>
+            <Link href={item.href} key={item.href}>{item.label} Leads</Link>
           ))}
         </nav>
 
         <nav className="footer-column" aria-label="Lead resources">
           <p className="footer-heading">Lead Resources</p>
           {resourceNavigation.map((item) => (
-            <a href={item.href} key={item.href}>{item.label}</a>
+            <Link href={item.href} key={item.href}>{item.label}</Link>
           ))}
-          <a href="/#standards">Qualification Standards</a>
-          <a href="/#faq">Frequently Asked Questions</a>
+          <Link href="/#standards">Qualification Standards</Link>
+          <Link href="/#faq">Frequently Asked Questions</Link>
         </nav>
 
         <nav className="footer-column" aria-label="Lion Marketing links">
           <p className="footer-heading">Lion Marketing</p>
-          <a href="/#how-it-works">How It Works</a>
-          <a href="/#book">Check Availability</a>
+          <Link href="/#how-it-works">How It Works</Link>
+          <Link href="/#book">Check Availability</Link>
+          <Link href="/contact">Contact</Link>
           <a href="https://app.thelistinglion.com">Agent Login</a>
         </nav>
       </div>
       <div className="footer-bottom">
         <span>© 2026 Lion Marketing LLC. All rights reserved.</span>
         <div>
-          <a href="https://lionmarketingai.com/privacy-policy">Privacy</a>
-          <a href="https://lionmarketingai.com/terms-of-service">Terms</a>
+          <Link href="/privacy-policy">Privacy</Link>
+          <Link href="/terms-of-service">Terms</Link>
         </div>
       </div>
     </footer>

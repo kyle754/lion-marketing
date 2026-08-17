@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import styles from "./calculator.module.css";
 
 const productOptions = [
@@ -145,10 +146,10 @@ export function LeadRoiCalculator() {
     <div className={styles.page}>
       <div className={styles.interactiveCalculator}>
         <header className={styles.topbar}>
-          <a className={styles.brand} href="/" aria-label="Lion Marketing home">
+          <Link className={styles.brand} href="/" aria-label="Lion Marketing home">
             <span>LM</span>
             <strong>Lion Marketing</strong>
-          </a>
+          </Link>
           <div>
             <span className={styles.internalBadge}>Internal tool</span>
             <button className={styles.resetButton} type="button" onClick={reset}>Reset</button>
