@@ -1,16 +1,12 @@
-import type { Metadata } from "next";
 import { PillarPage, type PillarPageData } from "../components/pillar-page";
+import { createPageMetadata } from "../lib/seo";
 
-export const metadata: Metadata = {
+export const metadata = createPageMetadata({
   title: "Final Expense Leads for Agents | Lion Marketing",
   description: "A practical guide to final expense leads: campaign targeting, prospect screening, phone verification, real-time delivery, pricing, and follow-up.",
-  alternates: { canonical: "https://lionmarketingai.com/final-expense-leads" },
-  openGraph: {
-    title: "Final Expense Leads for Agents | Lion Marketing",
-    description: "Understand how final expense leads are generated, screened, delivered, and worked.",
-    url: "https://lionmarketingai.com/final-expense-leads",
-  },
-};
+  pathname: "/final-expense-leads",
+  socialDescription: "Understand how final expense leads are generated, screened, delivered, and worked.",
+});
 
 const data: PillarPageData = {
   slug: "final-expense-leads",

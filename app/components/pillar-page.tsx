@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { SiteFooter, SiteHeader } from "./site-chrome";
 
 export type PillarPageData = {
@@ -77,7 +78,7 @@ export function PillarPage({ data }: { data: PillarPageData }) {
         description: data.intro,
         isPartOf: { "@id": "https://lionmarketingai.com/#website" },
         about: { "@id": "https://lionmarketingai.com/#service" },
-        dateModified: "2026-07-20",
+        dateModified: "2026-08-17",
       },
       {
         "@type": "BreadcrumbList",
@@ -107,16 +108,16 @@ export function PillarPage({ data }: { data: PillarPageData }) {
       <article className="pillar-page">
         <header className="pillar-hero">
           <nav className="breadcrumbs" aria-label="Breadcrumb">
-            <a href="/">Home</a><span aria-hidden="true">/</span><span>{data.title}</span>
+            <Link href="/">Home</Link><span aria-hidden="true">/</span><span>{data.title}</span>
           </nav>
           <div className="pillar-hero-grid">
             <div>
               <p className="eyebrow"><span /> {data.eyebrow}</p>
               <h1>{data.title}</h1>
               <p className="pillar-intro">{data.intro}</p>
-              <a className="button button-primary" href="/#book">
+              <Link className="button button-primary" href="/#book">
                 Check lead availability <span aria-hidden="true">↗</span>
-              </a>
+              </Link>
             </div>
             <aside className="answer-card" aria-label="Quick answer">
               <p className="list-label">The short answer</p>
@@ -163,12 +164,12 @@ export function PillarPage({ data }: { data: PillarPageData }) {
           <h2 id="related-heading">Related insurance lead guides.</h2>
           <div className="related-grid">
             {selectedRelatedPages.map((page) => (
-              <a href={page.href} className="related-card" key={page.href}>
+              <Link href={page.href} className="related-card" key={page.href}>
                 <span>Guide</span>
                 <h3>{page.title}</h3>
                 <p>{page.copy}</p>
                 <strong>Read the guide <i aria-hidden="true">→</i></strong>
-              </a>
+              </Link>
             ))}
           </div>
         </section>
@@ -192,7 +193,7 @@ export function PillarPage({ data }: { data: PillarPageData }) {
           <p className="eyebrow"><span /> Your product · Your states · Your capacity</p>
           <h2>Build a lead flow your team can actually work.</h2>
           <p>Tell us what you sell and how much volume your agents can handle. We’ll walk through fit, availability, and pricing without overcomplicating it.</p>
-          <a className="button button-primary button-large" href="/#book">Talk through your lead plan <span aria-hidden="true">↗</span></a>
+          <Link className="button button-primary button-large" href="/#book">Talk through your lead plan <span aria-hidden="true">↗</span></Link>
         </section>
       </article>
       <SiteFooter />

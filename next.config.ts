@@ -2,6 +2,19 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  async redirects() {
+    return [
+      { source: "/home", destination: "/", permanent: true },
+      { source: "/_preview", destination: "/", permanent: true },
+      { source: "/_preview/:path*", destination: "/", permanent: true },
+      { source: "/white-label-sign-up", destination: "/#book", permanent: true },
+      {
+        source: "/lionmarketingai.com/terms-of-service",
+        destination: "/terms-of-service",
+        permanent: true,
+      },
+    ];
+  },
   async headers() {
     return [
       {
