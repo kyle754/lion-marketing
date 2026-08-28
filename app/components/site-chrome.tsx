@@ -135,6 +135,7 @@ export function SiteFooter() {
         <div>
           <Link href="/privacy-policy">Privacy</Link>
           <Link href="/terms-of-service">Terms</Link>
+          <a href="mailto:kyle@thelistinglion.com?subject=Privacy%20Choices">Privacy Choices</a>
         </div>
       </div>
     </footer>

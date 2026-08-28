@@ -2060,6 +2060,26 @@ footer {
   line-height: 1.75;
 }
 
+.content-page-body p + p,
+.content-page-body ul + p {
+  margin-top: 18px;
+}
+
+.content-page-body p + ul {
+  margin-top: 12px;
+}
+
+.content-page-body a {
+  color: var(--champagne-ink);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.content-page-body a:hover {
+  color: var(--navy);
+}
+
 .content-page-body ul {
   display: grid;
   gap: 8px;
