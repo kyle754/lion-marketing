@@ -73,3 +73,16 @@ test("footer links only to implemented legal and contact routes", async () => {
   assert.match(footer, /href="\/terms-of-service"/);
   assert.doesNotMatch(footer, /href="https:\/\/lionmarketingai\.com\/(privacy-policy|terms-of-service)"/);
 });
+
+test("external customer links use the Lion Marketing domain", async () => {
+  const home = await readFile(new URL("app/page.tsx", root), "utf8");
+  const chrome = await readFile(new URL("app/components/site-chrome.tsx", root), "utf8");
+  const publicSource = `${home}\n${chrome}`;
+
+  assert.match(
+    home,
+    /https:\/\/link\.lionmarketingai\.com\/widget\/booking\/19xLmsQpIvEy1VHenF6x/,
+  );
+  assert.match(chrome, /https:\/\/app\.lionmarketingai\.com/);
+  assert.doesNotMatch(publicSource, /thelistinglion\.com/);
+});

@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+const CUSTOMER_PORTAL_URL = "https://app.lionmarketingai.com";
+
 const productNavigation = [
   { href: "/final-expense-leads", label: "Final Expense" },
   { href: "/term-life-insurance-leads", label: "Term Life" },
@@ -46,7 +48,7 @@ export function SiteHeader() {
       </nav>
 
       <div className="nav-actions">
-        <a className="login-link" href="https://app.thelistinglion.com">
+        <a className="login-link" href={CUSTOMER_PORTAL_URL}>
           Agent login
         </a>
         <details className="mobile-nav">
@@ -75,7 +77,7 @@ export function SiteHeader() {
                 {companyNavigation.map((item) => (
                   <Link href={item.href} key={item.href}>{item.label}</Link>
                 ))}
-                <a href="https://app.thelistinglion.com">Agent Login</a>
+                <a href={CUSTOMER_PORTAL_URL}>Agent Login</a>
               </div>
             </details>
           </nav>
@@ -125,7 +127,7 @@ export function SiteFooter() {
           <Link href="/#how-it-works">How It Works</Link>
           <Link href="/#book">Check Availability</Link>
           <Link href="/contact">Contact</Link>
-          <a href="https://app.thelistinglion.com">Agent Login</a>
+          <a href={CUSTOMER_PORTAL_URL}>Agent Login</a>
         </nav>
       </div>
       <div className="footer-bottom">

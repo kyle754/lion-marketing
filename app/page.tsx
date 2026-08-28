@@ -1,7 +1,7 @@
 import { SiteFooter, SiteHeader } from "./components/site-chrome";
 
 const CALENDAR_URL =
-  "https://link.thelistinglion.com/widget/booking/19xLmsQpIvEy1VHenF6x";
+  "https://link.lionmarketingai.com/widget/booking/19xLmsQpIvEy1VHenF6x";
 
 const structuredData = {
   "@context": "https://schema.org",
