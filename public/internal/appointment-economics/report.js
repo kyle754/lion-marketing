@@ -3,7 +3,6 @@
   const num=(n,d=1)=>Number.isFinite(n)?new Intl.NumberFormat('en-US',{maximumFractionDigits:d}).format(n):'—';
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const date=()=>new Intl.DateTimeFormat('en-US',{timeZone:'America/Los_Angeles',dateStyle:'long'}).format(new Date());
-  const basis=s=>({example:'Editable examples',reported:'Prospect-reported',verified:'Verified records'}[s.basis]||'Editable examples');
   const formatDate=v=>/^\d{4}-\d{2}-\d{2}$/.test(v)&&Number.isFinite(Date.parse(v+'T12:00:00Z'))?new Intl.DateTimeFormat('en-US',{dateStyle:'medium',timeZone:'UTC'}).format(new Date(v+'T12:00:00Z')):'To confirm';
   const v=(m,key,f=money)=>m.available?f(m[key]):'Unavailable';
   function rows(r){
@@ -44,7 +43,7 @@
   }
   function html(s,r){
     const table=rows(r).map(row=>'<tr>'+row.map((x,i)=>'<'+(i?'td':'th')+'>'+esc(x)+'</'+(i?'td':'th')+'>').join('')+'</tr>').join('');
-    return '<div class="decision-report"><div class="brand">LION MARKETING</div><h1>Your appointment plan</h1><p>Prepared for '+esc(s.prospect||'Prospective partner')+' / '+esc(s.product)+' / '+esc(s.market||'Market to confirm')+'</p><p>'+basis(s)+' / '+esc(s.period)+'</p><h2>Today</h2><p>'+num(r.today.held)+' shows / '+(r.today.available?money(r.today.cash):'Cash cost incomplete')+' cash / '+money(r.today.costHeld,2)+' per show / '+num(r.today.ownerHours)+' of your setting hours.</p><p>'+num(r.capacity.gap)+' empty slots out of '+num(s.capacity)+' monthly capacity.</p><h2>Proposed monthly plan</h2><p>'+num(r.target)+' extra shows / '+money(r.plan.investment)+' investment / '+money(r.plan.contribution)+' potential contribution / '+num(r.ownerTime)+' of your setting hours avoided.</p><p>'+coverage(s,r)+' Before other business costs.</p><h2>Three ways to add '+num(r.target)+' shows</h2><table><thead><tr><th></th><th>Your process</th><th>Hired setter</th><th>Lion</th></tr></thead><tbody>'+table+'</tbody></table><p>'+esc(decision(s,r))+'</p>'+benefits(s,r).map(([a,b])=>'<p><strong>'+esc(a)+':</strong> '+esc(b)+'</p>').join('')+'<h2>Next step</h2><p>'+esc(next(s,r))+'</p><p>Assumptions: '+num(s.close)+'% close / '+money(r.netValue)+' net value per sale / '+num(s.penalty)+'% setter reduction. Forecasts are not guaranteed. Hours have no dollar valuation.</p></div>';
+    return '<div class="decision-report"><div class="brand">LION MARKETING</div><h1>Your appointment plan</h1><p>Prepared for '+esc(s.prospect||'Prospective partner')+' / '+esc(s.product)+' / '+esc(s.market||'Market to confirm')+'</p><h2>Today</h2><p>'+num(r.today.held)+' shows / '+(r.today.available?money(r.today.cash):'Cash cost incomplete')+' cash / '+money(r.today.costHeld,2)+' per show / '+num(r.today.ownerHours)+' of your setting hours.</p><p>'+num(r.capacity.gap)+' empty slots out of '+num(s.capacity)+' monthly capacity.</p><h2>Proposed monthly plan</h2><p>'+num(r.target)+' extra shows / '+money(r.plan.investment)+' investment / '+money(r.plan.contribution)+' potential contribution / '+num(r.ownerTime)+' of your setting hours avoided.</p><p>'+coverage(s,r)+' Before other business costs.</p><h2>Three ways to add '+num(r.target)+' shows</h2><table><thead><tr><th></th><th>Your process</th><th>Hired setter</th><th>Lion</th></tr></thead><tbody>'+table+'</tbody></table><p>'+esc(decision(s,r))+'</p>'+benefits(s,r).map(([a,b])=>'<p><strong>'+esc(a)+':</strong> '+esc(b)+'</p>').join('')+'<h2>Next step</h2><p>'+esc(next(s,r))+'</p><p>Assumptions: '+num(s.close)+'% close / '+money(r.netValue)+' net value per sale / '+num(s.penalty)+'% setter reduction. Forecasts are not guaranteed. Hours have no dollar valuation.</p></div>';
   }
   async function build(s,r,lib){
     const {PDFDocument,StandardFonts,rgb}=lib,pdf=await PDFDocument.create(),page=pdf.addPage([612,792]);
@@ -73,7 +72,7 @@
     text('YOUR APPOINTMENT OPPORTUNITY',36,705,8,bold,gold);
     text('Fill the gap. Focus on sales.',36,677,29,serif);
     text((s.prospect||'Prospective partner')+' / '+s.product+' / '+(s.market||'Market to confirm'),36,658,10,sans,muted);
-    text("TODAY'S BASELINE / "+basis(s)+' / '+s.period,36,634,8,bold,muted);
+    text("TODAY'S BASELINE / MONTHLY",36,634,8,bold,muted);
     const stats=[['CURRENT SHOWS',num(r.today.held)],['MONTHLY CASH',r.today.available?money(r.today.cash):'Incomplete'],['CASH / SHOW',money(r.today.costHeld,2)],['YOUR SETTING TIME',num(r.today.ownerHours)+' hrs']];
     stats.forEach(([label,value],i)=>{const x=36+i*139;text(label,x,615,7.5,bold,muted,125);text(value,x,591,22,serif,ink,125);});
     text(num(r.capacity.gap)+' empty slots / '+num(s.capacity)+' monthly capacity. Proposed plan: '+num(r.plan.totalShows)+' total shows, with '+num(r.plan.remaining)+' slots remaining.',36,571,9,sans,muted);
@@ -96,10 +95,10 @@
     paragraph(s.nextStep||'Confirm the product, market, appointment volume, and final quote.',36,113,540,9.5,ink,2,12);
     text('Next step: '+formatDate(s.nextDate)+' / Proposed launch: '+formatDate(s.launchDate),36,88,8,sans,muted);
     line(83);
-    paragraph('Assumptions: '+num(s.close)+'% close; '+money(r.netValue)+' net value per sale; '+money(s.price)+'/show ('+(s.quoteStatus==='quoted'?'quoted':'starting example')+'). Setter: '+money(s.setterMonthly)+'/month each; '+num(r.hired.setters,0)+' needed; '+num(s.penalty)+'% performance reduction.',36,70,540,8,muted,2,10);
-    paragraph('Costs are cash only; hours have no dollar valuation. Existing tools are not charged again for growth. Future results, volume, and dates require confirmation; sales outcomes are not guaranteed.',36,43,540,8,muted,2,10);
+    paragraph('Assumptions: '+num(s.close)+'% close; '+money(r.netValue)+' net value per sale; '+money(s.price)+'/show. Setter: '+money(s.setterMonthly)+'/month each; '+num(r.hired.setters,0)+' needed; '+num(s.penalty)+'% performance reduction.',36,70,540,8,muted,2,10);
+    paragraph('Time: '+num(s.dialSeconds)+' sec/dial x '+num(s.attemptsPerLead)+' attempt(s)/lead; '+num(s.connectMinutes)+' min/unbooked connect; '+num(s.bookedMinutes)+' min/booked call. Booked talk includes the connection. Hours have no dollar value; results are estimates before other business costs.',36,43,540,8,muted,2,10);
     pdf.setTitle('Lion Marketing - Proposed Appointment Plan');pdf.setAuthor('Lion Marketing');return pdf.save();
   }
-  root.LionReport={html,build,rows,decision,benefits,basis,formatDate,next,coverage,money,num,esc};
+  root.LionReport={html,build,rows,decision,benefits,formatDate,next,coverage,money,num,esc};
   if(typeof module!=='undefined'&&module.exports)module.exports=root.LionReport;
 })(typeof globalThis!=='undefined'?globalThis:this);

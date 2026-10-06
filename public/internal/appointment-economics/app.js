@@ -1,19 +1,19 @@
 (() => {
   const $=id=>document.getElementById(id),M=window.LionModel,R=window.LionReport,{money,num,esc}=R;
-  const storageKey='lion-appointment-economics-v5',schemas={};
+  const storageKey='lion-appointment-economics-v6',schemas={};
   const definitions={
     'baseline-fields':[
-      ['capacity','Attended appointment capacity / month','',0,100000,1],['currentAppointments','Actual attended appointments / month','',0,100000,1,'Recorded result; never recalculated from funnel edits.'],
+      ['capacity','Attended appointment capacity / month','',0,100000,1],['currentAppointments','Current attended appointments / month','',0,100000,.1,'Actual attendance stays separate from the funnel projection.'],
       ['leads','Leads per month','',0,1000000,1],['cpl','Cost per lead','$',0,100000,1],
-      ['currentHours','Total follow-up hours / month','hrs',0,100000,.5,'Include dialing, retries, follow-up, and setting admin. Time stays in hours.'],
-      ['close','Close rate','%',0,100,.1,'Sales ÷ attended appointments.',true],
-      ['commission','Net commission / contribution per sale','$',0,1000000,50,'After direct delivery costs; before other business overhead.']],
-    'funnel-fields':[['connect','Connect rate','%',0,100,.1,'Connected leads ÷ all leads.',true],['book','Appointment booking rate','%',0,100,.1,'Bookings ÷ connected leads.',true],['show','Appointment show rate','%',0,100,.1,'Attended appointments ÷ bookings.',true]],
+      ['connect','Connect rate','%',0,100,.1,'Connected leads ÷ all leads.',true],['book','Appointment booking rate','%',0,100,.1,'Bookings ÷ connected leads.',true],['show','Appointment show rate','%',0,100,.1,'Attended appointments ÷ bookings.',true],
+      ['close','Close rate','%',0,100,.1,'Sales ÷ attended appointments.',true]],
+    'timing-fields':[['dialSeconds','Time per dial attempt','sec',60,600,5,'At least 60 seconds per dial.'],['connectMinutes','Talk time for a connect without a booking','min',0,60,.5,'Default: 2.5 minutes, the midpoint of 2–3 minutes.'],['bookedMinutes','Total talk time for a booked appointment','min',0,120,.5,'Default: 10 minutes. Includes the connection conversation.'],['attemptsPerLead','Average dial attempts per lead','',1,50,.5,'Default: one pass. Increase for repeated follow-up attempts.']],
+    'value-fields':[['commission','Net commission / contribution per sale','$',0,1000000,50,'After direct delivery costs; before other business overhead.']],
     'cash-fields':[['tools','Existing tools / overhead per month','$',0,100000,10,'Included in today’s spending only.'],['extraTools','Extra tools needed to scale your process / month','$',0,100000,10,'Only new expenses for the additional appointments.']],
     'payroll-fields':[['staffHourly','Actual staff wage / hour','$',0,10000,1,'Use wages actually paid. Agent time has no hourly dollar value.']],
     'reserve-fields':[['reserve','Cancellation / chargeback reserve','%',0,100,1,'Reduces sale value only.',true]],
     'hire-fields':[['setterMonthly','Monthly salary per setter','$',0,100000,50]],
-    'performance-fields':[['penalty','Optional booking performance reduction','%',0,100,1,'0% means equal performance. Applied once to the observed baseline yield.',true],['setterHours','Available follow-up hours per setter / month','hrs',0,500,5]],
+    'performance-fields':[['penalty','Optional booking performance reduction','%',0,100,1,'0% means equal performance. Applied once to booking rate.',true],['setterHours','Available follow-up hours per setter / month','hrs',0,500,5]],
     'setup-fields':[['hireFee','Recruiting cash cost per setter, once','$',0,100000,25],['recruitHours','Your hiring hours per setter, once','hrs',0,500,.5],['trainerHours','Your training hours per setter, once','hrs',0,500,.5],['manageHours','Supervision hours per setter / month','hrs',0,500,.5],['hireTools','Tools per setter / month','$',0,100000,10],['hireExtra','Other new team cash costs / month','$',0,100000,10],['rampWeeks','Recruiting & onboarding readiness time','wks',0,52,.5]],
     'lion-price-field':[['price','Cost per attended appointment','$',0,100000,5,'Starts at $250; varies by product and market.']],
     'proposal-fields':[['proposed','Additional appointments proposed / month','',0,100000,1,'A starting plan within unused capacity; not an automatic delivery commitment.']]
@@ -32,7 +32,7 @@
       if(schemas[key]){const n=Number(v[key]);if(Number.isFinite(n))out[key]=Math.min(schemas[key].max,Math.max(schemas[key].min,n));}
       else if(typeof v[key]==='string')out[key]=v[key].slice(0,2000);
     }
-    for(const [key,allowed] of Object.entries({operator:['owner','team'],compare:['current','hired'],basis:['example','reported','verified'],quoteStatus:['starting','quoted'],product:['Final Expense','Term Life','IUL','Whole Life','Mortgage Protection','Annuity','Other']}))if(!allowed.includes(out[key]))out[key]=M.defaults[key];
+    for(const [key,allowed] of Object.entries({operator:['owner','team'],compare:['current','hired'],product:['Final Expense','Term Life','IUL','Whole Life','Mortgage Protection','Annuity','Other']}))if(!allowed.includes(out[key]))out[key]=M.defaults[key];
     for(const key of ['launchDate','nextDate'])if(out[key]&&!/^\d{4}-\d{2}-\d{2}$/.test(out[key]))out[key]='';
     return out;
   }
@@ -40,12 +40,10 @@
     const saved=localStorage.getItem(storageKey);
     if(saved)state=validated(JSON.parse(saved));
     else{
-      const old=localStorage.getItem('lion-appointment-economics-v4')||localStorage.getItem('lion-appointment-economics-v3')||localStorage.getItem('lion-appointment-economics-v2')||localStorage.getItem('lion-appointment-economics-v1');
+      const old=localStorage.getItem('lion-appointment-economics-v5')||localStorage.getItem('lion-appointment-economics-v4')||localStorage.getItem('lion-appointment-economics-v3')||localStorage.getItem('lion-appointment-economics-v2')||localStorage.getItem('lion-appointment-economics-v1');
       if(old){
         const v=JSON.parse(old);state=validated(v);
-        state.currentHours=Number.isFinite(Number(v.minutes))?Math.max(0,Number(v.leads)*Number(v.minutes)/60):M.defaults.currentHours;
-        state.proposed=Math.min(20,Math.max(0,state.capacity-state.currentAppointments));
-        state.penalty=0;state.basis='example';state.quoteStatus='starting';
+        if(!Object.hasOwn(v,'proposed'))state.proposed=Math.min(20,Math.max(0,state.capacity-state.currentAppointments));
       }
     }
   }catch{}
@@ -57,14 +55,16 @@
   function render(){
     const r=M.calculate(state),{today:t,current:c,hired:h,capacity:k,plan:p}=r;
     $('payroll-fields').hidden=state.operator!=='team';
-    $('basis-pill').textContent=R.basis(state);
-    $('baseline-period').textContent=state.period+' / '+state.source;
-    $('today-stats').innerHTML=stats([['Monthly cash',t.available?money(t.cash):'Incomplete'],['Attended appointments',num(t.held)],['Cash cost / show',money(t.costHeld,2)],['Your setting hours',num(t.ownerHours)+' hrs',state.operator==='team'?num(t.dialing)+' paid-team follow-up hours':'Follow-up, retries & setting admin']]);
+    $('baseline-source').textContent=state.source;
+    $('today-stats').innerHTML=stats([['Monthly cash',t.available?money(t.cash):'Incomplete'],['Attended appointments',num(t.held)],['Cash cost / show',money(t.costHeld,2)],['Your setting hours',num(t.ownerHours)+' hrs',state.operator==='team'?num(t.dialing)+' paid-team follow-up hours':'Calculated from dials, connects & bookings']]);
     $('capacity-copy').textContent=num(t.held)+' of '+num(k.limit)+' monthly appointment slots used';
     $('capacity-gap').textContent=num(k.gap)+' empty slots';
     $('capacity-bar').style.width=Math.min(100,k.utilization||0)+'%';
-    $('today-note').textContent='This is today’s recorded baseline. It is separate from the growth projections below.';
-    $('price-pill').textContent=money(state.price)+' / show · '+(state.quoteStatus==='quoted'?'Quoted':'Starting example');
+    $('today-note').textContent='Cash cost uses current attended volume. Setting time is calculated from your lead volume, connect rate, and booking rate.';
+    const time=t.callTime;
+    $('current-time-total').textContent=num(time.hours)+' hrs';
+    $('current-time-breakdown').innerHTML=[['Dialing',num(time.attempts)+' attempts × '+num(state.dialSeconds)+' sec',num(time.dialMinutes/60)+' hrs'],['Connected, not booked',num(time.unbooked)+' × '+num(state.connectMinutes)+' min',num(time.connectTalkMinutes/60)+' hrs'],['Booked calls',num(time.booked)+' × '+num(state.bookedMinutes)+' min',num(time.bookingTalkMinutes/60)+' hrs']].map(([label,formula,hours])=>'<div><span>'+esc(label)+'<small>'+esc(formula)+'</small></span><strong>'+esc(hours)+'</strong></div>').join('');
+    $('price-pill').textContent=money(state.price)+' / attended appointment';
     $('plan-label').textContent=p.contribution<0?'PROPOSED PLAN / REVIEW THE SHORTFALL':'YOUR PROPOSED MONTHLY PLAN';
     $('plan-stats').innerHTML=stats([['Additional shows',num(p.shows)],['Monthly investment',money(p.investment)],[p.contribution<0?'Potential shortfall':'Potential contribution',money(p.contribution),'Before other business costs'],['Your setting hours avoided',r.ownerTime===null?'Unavailable':num(r.ownerTime)+' hrs',state.compare==='hired'?'Versus hiring a setter':'Versus scaling your process']]);
     $('plan-equation').textContent=num(p.shows)+' shows × '+num(state.close)+'% close × '+money(r.netValue)+' net sale value = '+money(p.saleValue)+' potential sale value, less '+money(p.investment)+' appointment spending.';
@@ -83,9 +83,9 @@
     document.querySelectorAll('[data-compare]').forEach(e=>e.setAttribute('aria-pressed',e.dataset.compare===state.compare));
     $('decision-copy').textContent=R.decision(state,r);
     const missing=[];
-    if(!c.available)missing.push(!t.available?'Enter the actual wage paid to the current team.':'Your process needs recorded attended output from the same lead cohort to project more shows.');
+    if(!c.available)missing.push(!t.available?'Enter the actual wage paid to the current team.':'Enter viable connect, booking, and show rates to project more shows.');
     if(!h.available)missing.push('The hiring scenario needs a viable yield and available setter hours.');
-    if(state.currentAppointments>state.leads)missing.push('Recorded shows exceed lead count; check cohort and reporting period before comparing.');
+    if(state.currentAppointments>state.leads)missing.push('Recorded shows exceed lead count; check that the numbers describe the same monthly leads.');
     $('comparison-warning').hidden=!missing.length;$('comparison-warning').textContent=missing.join(' ');
     const hrs=n=>num(n)+' hrs';
     $('detail-body').innerHTML=rowHtml([
@@ -94,21 +94,24 @@
       ['Paid wages / salary',val(c,'labor'),val(h,'labor'),'Included'],
       ['New tools / other cash costs',val(c,'tools'),val(h,'tools'),'Included'],
       ['New setters required','Existing process',h.setters===null?'Unavailable':num(h.setters,0),'Included'],
-      ['Follow-up operations / month',val(c,'dialing',hrs),val(h,'dialing',hrs),'Handled by Lion'],
+      ['Calculated setting time / month',val(c,'dialing',hrs),val(h,'dialing',hrs),'Handled by Lion'],
+      ['Dialing hours / month',c.available?hrs(c.callTime.dialMinutes/60):'Unavailable',h.available?hrs(h.callTime.dialMinutes/60):'Unavailable','Handled by Lion'],
+      ['Unbooked connection talk / month',c.available?hrs(c.callTime.connectTalkMinutes/60):'Unavailable',h.available?hrs(h.callTime.connectTalkMinutes/60):'Unavailable','Handled by Lion'],
+      ['Booked-call talk / month',c.available?hrs(c.callTime.bookingTalkMinutes/60):'Unavailable',h.available?hrs(h.callTime.bookingTalkMinutes/60):'Unavailable','Handled by Lion'],
       ['Your supervision / month','0 hrs',val(h,'ownerHours',hrs),'Handled by Lion'],
       ['Your hiring hours, once','0 hrs',val(h,'recruitHours',hrs),'Handled by Lion'],
       ['Your training hours, once','0 hrs',val(h,'trainingHours',hrs),'Handled by Lion'],
       ['Hiring scenario readiness','Existing process',num(state.rampWeeks)+' weeks','Confirm launch']
     ]);
-    $('funnel-check').textContent='Funnel estimate: '+num(r.funnel.held)+' shows. Recorded attendance: '+num(t.held)+'. '+(Math.abs(r.funnel.held-t.held)>.1?'They differ; check that the rates cover the same cohort and period. Recorded attendance stays unchanged.':'The inputs reconcile.');
+    $('funnel-check').textContent='Funnel estimate: '+num(r.funnel.held)+' shows. Recorded attendance: '+num(t.held)+'. '+(Math.abs(r.funnel.held-t.held)>.1?'They differ; check that the rates describe the same monthly leads. Recorded attendance stays unchanged.':'The inputs reconcile.');
     $('hire-summary').textContent=(h.available?num(h.setters,0)+' setter(s) for this additional volume; '+money(h.labor)+' salary + '+money(h.tools)+' tools / other cash costs. '+num(h.ownerHours)+' supervision hours per month; '+money(h.startup)+' setup cash + '+num(h.hiringHours)+' hiring / training hours once.':'Review missing workload inputs.')+' Performance scenario: '+(state.penalty===0?'equal to the current process.':num(state.penalty)+'% reduction.');
-    $('methodology').innerHTML='<p><strong>Today:</strong> leads × cost per lead + existing tools + actual paid staff wages. Your own time has no dollar value.</p><p><strong>Growth:</strong> proposed shows are limited to unused capacity. Observed yield = recorded attendance ÷ leads; additional required leads = proposed shows ÷ yield. Additional follow-up hours = required leads × current monthly follow-up hours ÷ current leads. The current process includes only new lead spending, paid staff wages, and the extra tools budget; existing tools are not charged again. Stable yield, lead availability, and workload are planning assumptions.</p><p><strong>Hiring:</strong> observed yield × (1 − optional performance reduction). Setters = round up follow-up hours ÷ available hours, with a full salary for each setter. Tools, supervision, recruiting cash, and hiring/training hours scale by staff count. Salary already covers paid setter training; owner training time stays in hours. One-time setup is never spread across monthly spending. Readiness weeks do not create a lost-sales estimate.</p><p><strong>Lion:</strong> proposed attended shows × appointment price. Potential sales use the prospect’s close rate and net sale value after reserve. Contribution subtracts Lion appointment spending only, before other business costs. Sales needed to cover spend = round up investment ÷ net sale value. Cost differences at the same extra volume are separate from growth contribution and are never added to it.</p>';
+    $('methodology').innerHTML='<p><strong>Calculated time:</strong> dialing minutes = leads × average attempts per lead × seconds per dial ÷ 60. Connections = leads × connect rate. Bookings = connections × booking rate. Talk minutes = (connections − bookings) × unbooked-connect minutes + bookings × total booked-call minutes. Setting hours = (dialing + talk minutes) ÷ 60. Booked-call time already includes the connection conversation; it is counted once. These estimates exclude other admin and reminder work.</p><p><strong>Today:</strong> cash cost = leads × cost per lead + existing tools + actual paid staff wages. Staff wages use calculated setting hours. Your own time has no dollar value.</p><p><strong>Growth:</strong> proposed shows are limited to unused capacity. Projected yield = connect rate × booking rate × show rate. Additional leads = proposed shows ÷ projected yield. The same call-stage calculation estimates time for those leads. Current-process growth includes only new leads, actual staff wages, and the extra tools budget; existing tools are not charged again.</p><p><strong>Hiring:</strong> optional performance reduction adjusts booking rate once. Required leads and call time are recalculated using that rate. Setters = round up calculated hours ÷ available hours, with a full salary for each setter. Tools, supervision, recruiting cash, and hiring/training hours scale by staff count. Paid setter training is covered by salary; owner training stays in hours. Setup is separate from monthly spending.</p><p><strong>Lion:</strong> attended shows × appointment price. Potential sales use your close rate and net sale value after reserve. Contribution subtracts appointment spending only, before other business costs. Sales needed to cover spending = round up investment ÷ net sale value. Equal-volume cost differences are separate from growth contribution.</p>';
     $('benefit-title').textContent=state.priority?'Address the friction: '+state.priority:'Keep your focus on closing.';
     $('personal-copy').textContent=state.priority?'You identified “'+state.priority+'” as the biggest friction. This plan adds '+num(p.shows)+' attended appointments while Lion handles the appointment-setting work.':'Lion handles appointment setting for the proposed extra volume.';
     $('benefits').innerHTML=R.benefits(state,r).map(([a,b])=>'<article><h3>'+esc(a)+'</h3><p>'+esc(b)+'</p></article>').join('');
-    $('proposal-summary').innerHTML='<strong>'+num(p.shows)+' attended appointments / month</strong><span>'+esc(state.product)+' · '+esc(state.market||'Market to confirm')+'</span><span>'+money(state.price)+' / show · '+money(p.investment)+' monthly investment</span><span>'+esc(state.quoteStatus==='quoted'?'Product / market quote entered':'Starting-price example; final quote to confirm')+'</span>';
+    $('proposal-summary').innerHTML='<strong>'+num(p.shows)+' attended appointments / month</strong><span>'+esc(state.product)+' · '+esc(state.market||'Market to confirm')+'</span><span>'+money(state.price)+' / show · '+money(p.investment)+' monthly investment</span>';
     $('next-summary').textContent=R.next(state,r);
-    $('presentation-context').textContent=(state.prospect||'Prospective partner')+' / '+state.product+' / '+R.basis(state);
+    $('presentation-context').textContent=(state.prospect||'Prospective partner')+' / '+state.product;
     $('print-report').innerHTML=R.html(state,r);
   }
   document.addEventListener('input',e=>{
