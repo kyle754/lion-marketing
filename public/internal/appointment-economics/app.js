@@ -1,29 +1,28 @@
 (() => {
-  const $=id=>document.getElementById(id), M=window.LionModel, storageKey='lion-appointment-economics-v4';
-  const money=(n,d=0)=>Number.isFinite(n)?new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',minimumFractionDigits:d,maximumFractionDigits:d}).format(n):'—';
-  const num=(n,d=1)=>Number.isFinite(n)?new Intl.NumberFormat('en-US',{maximumFractionDigits:d}).format(n):'—';
-  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const schemas={};
+  const $=id=>document.getElementById(id),M=window.LionModel,R=window.LionReport,{money,num,esc}=R;
+  const storageKey='lion-appointment-economics-v5',schemas={};
   const definitions={
-    'capacity-fields':[['group','Calendar capacity'],['capacity','Attended appointment capacity / month','',0,100000,1,'How many sales appointments can you actually take?'],['currentAppointments','Current attended appointments / month','',0,100000,.1,'Enter actual shows to calibrate booking rate. Funnel edits update this estimate.']],
-    'current-fields':[
-      ['group','Lead investment'],['leads','Leads per month','',0,1000000,1],['cpl','Cost per lead','$',0,100000,1],
-      ['group','Sequential conversion rates'],['connect','Connect rate','%',0,100,.1,'Leads reached ÷ total leads',true],['book','Appointment booking rate','%',0,100,.1,'Appointments booked ÷ connected leads',true],['show','Appointment show rate','%',0,100,.1,'Attended appointments ÷ bookings',true],['close','Close rate','%',0,100,.1,'Sales ÷ attended appointments',true],
-      ['group','Follow-up hours & cash expenses'],['minutes','Total minutes per lead','min',0,600,.5],['tools','Monthly tools / overhead','$',0,100000,1]],
-    'current-payroll-fields':[['staffHourly','Actual staff wage / hour','$',0,10000,1,'Only for an existing paid team. Enter the actual wage paid; agent time is never assigned a dollar value.']],
-    'value-fields':[['commission','Average commission / contribution per sale','$',0,1000000,50],['reserve','Cancellation / chargeback reserve','%',0,100,1,'Applied to sale value, not appointment counts',true]],
-    'hire-fields':[['setterMonthly','Monthly salary per setter','$',0,100000,50,'Low-end planning assumption: $1,200. Paid regardless of appointment output.']],
-    'performance-fields':[['group','Performance & workload'],['penalty','Booking performance reduction','%',0,100,1,'Relative booking adjustment only. Use 0% to assume equal performance.',true],['setterHours','Follow-up hours per setter / month','hrs',0,500,5,'Uses the current minutes per lead. Larger workloads may require more setters.']],
-    'setup-fields':[['group','Hiring, training & management'],['hireFee','One-time recruiting costs per setter','$',0,100000,25],['recruitHours','Your hiring hours per setter','hrs',0,500,.5],['trainerHours','Your training hours per setter','hrs',0,500,.5],['manageHours','Supervision hours per setter / month','hrs',0,500,.5],['hireTools','Tools cost per setter / month','$',0,100000,10],['hireExtra','Other recurring team costs / month','$',0,100000,10],['rampWeeks','Time to recruit, train & get ready','wks',0,52,.5]],
-    'lion-price-field':[['price','Cost per attended appointment','$',0,100000,5,'Starts at $250; varies by product and market']],
-    'target-field':[['target','Custom attended appointments / month','',0,100000,1]]
+    'baseline-fields':[
+      ['capacity','Attended appointment capacity / month','',0,100000,1],['currentAppointments','Actual attended appointments / month','',0,100000,1,'Recorded result; never recalculated from funnel edits.'],
+      ['leads','Leads per month','',0,1000000,1],['cpl','Cost per lead','$',0,100000,1],
+      ['currentHours','Total follow-up hours / month','hrs',0,100000,.5,'Include dialing, retries, follow-up, and setting admin. Time stays in hours.'],
+      ['close','Close rate','%',0,100,.1,'Sales ÷ attended appointments.',true],
+      ['commission','Net commission / contribution per sale','$',0,1000000,50,'After direct delivery costs; before other business overhead.']],
+    'funnel-fields':[['connect','Connect rate','%',0,100,.1,'Connected leads ÷ all leads.',true],['book','Appointment booking rate','%',0,100,.1,'Bookings ÷ connected leads.',true],['show','Appointment show rate','%',0,100,.1,'Attended appointments ÷ bookings.',true]],
+    'cash-fields':[['tools','Existing tools / overhead per month','$',0,100000,10,'Included in today’s spending only.'],['extraTools','Extra tools needed to scale your process / month','$',0,100000,10,'Only new expenses for the additional appointments.']],
+    'payroll-fields':[['staffHourly','Actual staff wage / hour','$',0,10000,1,'Use wages actually paid. Agent time has no hourly dollar value.']],
+    'reserve-fields':[['reserve','Cancellation / chargeback reserve','%',0,100,1,'Reduces sale value only.',true]],
+    'hire-fields':[['setterMonthly','Monthly salary per setter','$',0,100000,50]],
+    'performance-fields':[['penalty','Optional booking performance reduction','%',0,100,1,'0% means equal performance. Applied once to the observed baseline yield.',true],['setterHours','Available follow-up hours per setter / month','hrs',0,500,5]],
+    'setup-fields':[['hireFee','Recruiting cash cost per setter, once','$',0,100000,25],['recruitHours','Your hiring hours per setter, once','hrs',0,500,.5],['trainerHours','Your training hours per setter, once','hrs',0,500,.5],['manageHours','Supervision hours per setter / month','hrs',0,500,.5],['hireTools','Tools per setter / month','$',0,100000,10],['hireExtra','Other new team cash costs / month','$',0,100000,10],['rampWeeks','Recruiting & onboarding readiness time','wks',0,52,.5]],
+    'lion-price-field':[['price','Cost per attended appointment','$',0,100000,5,'Starts at $250; varies by product and market.']],
+    'proposal-fields':[['proposed','Additional appointments proposed / month','',0,100000,1,'A starting plan within unused capacity; not an automatic delivery commitment.']]
   };
-  let state={...M.defaults};
+  let state={...M.defaults},presenting=false;
   for(const [container,fields] of Object.entries(definitions)){
-    $(container).innerHTML=fields.map(f=>{
-      if(f[0]==='group')return `<p class="group-label">${f[1]}</p>`;
-      const [key,label,unit,min,max,step,hint,slider]=f;schemas[key]={min,max,step};
-      return `<div class="field"><div class="input-line"><label for="${key}">${label}</label><div class="numeric">${unit==='$'?'<span>$</span>':''}<input type="number" inputmode="decimal" id="${key}" data-key="${key}" min="${min}" max="${max}" step="${step}" ${hint?`aria-describedby="hint-${key}"`:''}>${unit&&unit!=='$'?`<span>${unit}</span>`:''}</div></div>${hint?`<p class="subhint" id="hint-${key}">${hint}</p>`:''}${slider?`<input type="range" data-key="${key}" min="${min}" max="${max}" step="${step}" aria-label="${label} slider"><div class="range-ends"><span>${min}%</span><span>${max}%</span></div>`:''}</div>`;
+    $(container).innerHTML=fields.map(([key,label,unit,min,max,step,hint,slider])=>{
+      schemas[key]={min,max,step};
+      return '<div class="field"><div class="input-line"><label for="'+key+'">'+label+'</label><div class="numeric">'+(unit==='$'?'<span>$</span>':'')+'<input type="number" inputmode="decimal" id="'+key+'" data-key="'+key+'" min="'+min+'" max="'+max+'" step="'+step+'"'+(hint?' aria-describedby="hint-'+key+'"':'')+'>'+(unit&&unit!=='$'?'<span>'+unit+'</span>':'')+'</div></div>'+(hint?'<p class="subhint" id="hint-'+key+'">'+hint+'</p>':'')+(slider?'<input type="range" data-key="'+key+'" min="'+min+'" max="'+max+'" step="'+step+'" aria-label="'+label+' slider">':'')+'</div>';
     }).join('');
   }
   function validated(v){
@@ -31,132 +30,114 @@
     for(const key of Object.keys(out)){
       if(!Object.hasOwn(v,key))continue;
       if(schemas[key]){const n=Number(v[key]);if(Number.isFinite(n))out[key]=Math.min(schemas[key].max,Math.max(schemas[key].min,n));}
-      else if(typeof out[key]==='boolean')out[key]=v[key]===true;
-      else if(typeof out[key]==='string'&&typeof v[key]==='string')out[key]=v[key].slice(0,5000);
+      else if(typeof v[key]==='string')out[key]=v[key].slice(0,2000);
     }
-    for(const [key,allowed] of Object.entries({operator:['owner','team'],targetMode:['capacity','current','manual'],compare:['current','hired']}))if(!allowed.includes(out[key]))out[key]=M.defaults[key];
+    for(const [key,allowed] of Object.entries({operator:['owner','team'],compare:['current','hired'],basis:['example','reported','verified'],quoteStatus:['starting','quoted'],product:['Final Expense','Term Life','IUL','Whole Life','Mortgage Protection','Annuity','Other']}))if(!allowed.includes(out[key]))out[key]=M.defaults[key];
+    for(const key of ['launchDate','nextDate'])if(out[key]&&!/^\d{4}-\d{2}-\d{2}$/.test(out[key]))out[key]='';
     return out;
   }
   try{
     const saved=localStorage.getItem(storageKey);
     if(saved)state=validated(JSON.parse(saved));
-    else {
-      const previous=localStorage.getItem('lion-appointment-economics-v3')||localStorage.getItem('lion-appointment-economics-v2'), old=previous||localStorage.getItem('lion-appointment-economics-v1');
-      if(old){const v=JSON.parse(old);state=validated(v);if(!previous){state.currentAppointments=state.leads*state.connect/100*state.book/100*state.show/100;state.targetMode=v.targetMode==='manual'?'manual':'capacity';}}
+    else{
+      const old=localStorage.getItem('lion-appointment-economics-v4')||localStorage.getItem('lion-appointment-economics-v3')||localStorage.getItem('lion-appointment-economics-v2')||localStorage.getItem('lion-appointment-economics-v1');
+      if(old){
+        const v=JSON.parse(old);state=validated(v);
+        state.currentHours=Number.isFinite(Number(v.minutes))?Math.max(0,Number(v.leads)*Number(v.minutes)/60):M.defaults.currentHours;
+        state.proposed=Math.min(20,Math.max(0,state.capacity-state.currentAppointments));
+        state.penalty=0;state.basis='example';state.quoteStatus='starting';
+      }
     }
-  }catch{$('save-status').textContent='Browser storage is unavailable; download the PDF to keep the comparison.';}
-  function hydrate(except){document.querySelectorAll('[data-key]').forEach(e=>{if(e===except)return;const v=state[e.dataset.key];if(e.type==='checkbox')e.checked=v;else e.value=typeof v==='number'?Math.round(v*10000)/10000:v;});}
-  function persist(){try{localStorage.setItem(storageKey,JSON.stringify(state));$('save-status').textContent='Changes stay in this browser. Reset for a new prospect.';}catch{$('save-status').textContent='Changes are not saved; download the PDF to keep this comparison.';}}
-  function linkFunnel(key){
-    if(['leads','connect','book','show'].includes(key))state.currentAppointments=state.leads*state.connect/100*state.book/100*state.show/100;
-    else if(key==='currentAppointments'){
-      const potential=state.leads*state.connect/100*state.show/100;
-      if(potential>0)state.book=Math.min(100,state.currentAppointments/potential*100);
-    }
-  }
-  function modelRows(r){
-    const {current:c,hired:h,lion:l}=r;
-    const val=(m,k,format=money)=>m.available?format(m[k]):'Unavailable';
-    const rows=[
-      ['Attended appointments / month',val(c,'held',num),val(h,'held',num),num(l.held)],
-      ['Required leads',val(c,'leads',num),val(h,'leads',num),'Included'],
-      ['Estimated sales',val(c,'sales',num),val(h,'sales',num),num(l.sales)],
-      ['Lead acquisition',val(c,'leadCost'),val(h,'leadCost'),'Included'],
-      ['Paid follow-up wages / salary',val(c,'labor'),val(h,'labor'),money(0)],
-      ['Setters needed', '—', h.available?num(h.setters,0):'Unavailable','Included'],
-      ['Tools / other recurring costs',val(c,'tools'),money(h.tools+state.hireExtra),money(0)],
-      ['Appointment investment','—','—',`${num(l.billed)} × ${money(state.price)}`],
-      ['Monthly cash cost',val(c,'cash'),val(h,'cash'),money(l.cash),'total-row'],
-      ['Cash cost / attended appointment',val(c,'costHeld',n=>money(n,2)),val(h,'costHeld',n=>money(n,2)),money(l.costHeld,2)],
-      ['Cash cost / sale',val(c,'costSale'),val(h,'costSale'),money(l.costSale)],
-      ['Contribution after cash acquisition costs',val(c,'contribution'),val(h,'contribution'),money(l.contribution)],
-      ['One-time setup cash (separate)',money(0),money(h.startup),money(0)],
-    ];
-    return rows.map(([label,a,b,c,cls=''])=>`<tr class="${cls}"><th scope="row">${esc(label)}</th><td>${esc(a)}</td><td>${esc(b)}</td><td class="lion-col">${esc(c)}</td></tr>`).join('');
-  }
-  function hoursRows(r){
-    const c=r.current,h=r.hired,hrs=n=>num(n)+' hrs',v=(m,k)=>m.available?hrs(m[k]):'Unavailable';
-    const rows=[
-      ['Follow-up / month',v(c,'dialing'),v(h,'dialing'),'0 hrs'],
-      ['Your supervision / month','0 hrs',v(h,'ownerHours'),'0 hrs'],
-      ['Total setting operations / month',v(c,'operationsHours'),v(h,'operationsHours'),'0 hrs','total-row'],
-      ['Of these, your monthly hours',v(c,'ownerHours'),v(h,'ownerHours'),'0 hrs'],
-      ['Hiring / interviews (one-time)','0 hrs',hrs(h.recruitHours),'0 hrs'],
-      ['Training / onboarding (one-time)','0 hrs',hrs(h.trainingHours),'0 hrs'],
-      ['Total setup hours (one-time)','0 hrs',hrs(h.hiringHours),'0 hrs','total-row'],
-    ];
-    return rows.map(([label,a,b,c,cls=''])=>`<tr class="${cls}"><th scope="row">${esc(label)}</th><td>${esc(a)}</td><td>${esc(b)}</td><td class="lion-col">${esc(c)}</td></tr>`).join('');
-  }
+  }catch{}
+  function hydrate(except){document.querySelectorAll('[data-key]').forEach(e=>{if(e!==except)e.value=state[e.dataset.key];});}
+  function persist(){try{localStorage.setItem(storageKey,JSON.stringify(state));$('save-status').textContent='Saved in this browser. Reset for a new prospect.';}catch{$('save-status').textContent='Storage unavailable. Download the PDF to keep this plan.';}}
+  const stats=items=>items.map(([label,value,detail])=>'<div><p class="eyebrow">'+esc(label)+'</p><strong>'+esc(value)+'</strong>'+(detail?'<p class="subhint">'+esc(detail)+'</p>':'')+'</div>').join('');
+  const rowHtml=rows=>rows.map((row,i)=>'<tr'+(i===1?' class="total-row"':'')+'>'+row.map((v,j)=>'<'+(j?'td':'th scope="row"')+(j===3?' class="lion-col"':'')+'>'+esc(v)+'</'+(j?'td':'th')+'>').join('')+'</tr>').join('');
+  const val=(m,k,f=money)=>m.available?f(m[k]):'Unavailable';
   function render(){
-    const r=M.calculate(state), {current:c,hired:h,lion:l,capacity:k}=r;
-    $('target-field').hidden=state.targetMode!=='manual';
-    $('current-payroll-fields').hidden=state.operator!=='team';
-    $('hire-assumption-summary').innerHTML=`<strong>${h.available?num(h.setters,0)+' '+(h.setters===1?'setter':'setters')+' at the selected target':'Enter viable workload assumptions'}</strong><br>${money(h.labor)} monthly salary + ${money(h.tools+state.hireExtra)} tools / other paid costs.<br>${num(h.ownerHours)} supervision hours / month; ${num(h.hiringHours)} hiring + training hours once.<br>${money(h.startup)} one-time recruiting expenses; ${num(state.rampWeeks)} weeks until ready.<br>${num(state.penalty)}% booking reduction; ${num(state.setterHours)} follow-up hours per setter / month. Review the assumptions below.`;
-    $('utilization-pill').textContent=k.utilization===null?'Enter monthly capacity':`${num(k.utilization)}% of capacity used`;
-    $('capacity-stats').innerHTML=[['Monthly capacity',num(k.limit)],['Currently attended',num(k.current)],['Empty appointment slots',num(k.gap)]].map(([label,v])=>`<div><p>${label}</p><strong>${v}</strong></div>`).join('');
-    $('capacity-bar').style.width=Math.min(100,k.utilization??0)+'%';
-    $('opportunity-value').textContent=money(k.saleValue);
-    $('opportunity-sales').textContent=`${num(k.gap)} empty slots × ${num(state.close)}% close rate = ${num(k.extraSales)} potential additional sales.`;
-    $('opportunity-net').textContent=money(k.contribution);
-    $('opportunity-cost').textContent=`After ${money(k.lionInvestment)} to fill those slots at ${money(state.price)} per show.`;
-    $('opportunity-note').textContent=`Uses ${money(r.netValue)} net commission / contribution per sale. This is potential value from filling unused capacity, before other business costs; it is separate from the equal-volume cost comparison below.`;
-    document.querySelectorAll('[data-compare]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.compare===state.compare));
-    const baseName=state.compare==='hired'?'hiring a setter':'the current process';
-    $('gap-label').textContent=r.savings===null?'SET A VIABLE ATTENDED-APPOINTMENT TARGET':r.savings>=0?'MONTHLY CASH COST SAVED WITH LION':'EXTRA MONTHLY CASH COST WITH LION';
-    $('gap-value').textContent=money(r.savings===null?null:Math.abs(r.savings));
-    $('time-value').textContent=r.ownerTime===null?'—':`${num(r.ownerTime)} hrs`;
-    $('time-label').textContent='YOUR FOLLOW-UP / SUPERVISION HOURS FREED';
-    $('gap-copy').textContent=r.savings===null?'A positive target and viable cash-cost inputs are needed to compare the lead models.':`At ${num(r.target)} attended appointments per month, Lion costs ${money(Math.abs(r.savings))} ${r.savings>=0?'less':'more'} in monthly cash expenses than ${baseName} and frees ${num(r.ownerTime)} of your follow-up / supervision hours. One-time setup is separate. Your time is shown in hours only.`;
-    $('current-held').textContent=money(c.costHeld,2);$('hire-held').textContent=money(h.costHeld,2);$('lion-held').textContent=money(l.costHeld,2);$('threshold').textContent=money(r.threshold,2);
-    $('threshold-note').textContent=`Per attended appointment to match ${state.compare==='hired'?'setter':'current'} monthly cash cost`;
-    $('lion-unit-note').textContent=`${money(state.price)} per attended appointment`;
-    $('funnel-meta').textContent=`${num(state.leads,0)} ${state.product.toLowerCase()} leads / month`;
-    const stages=[['Leads',r.funnel.leads,'100% of input leads'],['Connected',r.funnel.connected,`${num(state.connect)}% of leads`],['Booked',r.funnel.booked,`${num(state.book,2)}% of connections`],['Attended',r.funnel.held,`${num(state.show)}% of bookings`],['Sales',r.funnel.sales,`${num(state.close)}% of attended`]];
-    $('funnel').innerHTML=stages.map(([label,count,detail])=>`<div class="funnel-stage"><span class="stage-label">${label}</span><strong>${num(count)}</strong><p class="stage-rate">${detail}</p><div class="track"><div class="bar" style="width:${state.leads>0?count/state.leads*100:0}%"></div></div></div>`).join('');
-    const baselineHours=state.leads*state.minutes/60;
-    $('funnel-insight').textContent=`${num(state.leads-r.funnel.connected)} leads never connect; ${num(r.funnel.booked-r.funnel.held)} booked appointments do not show. The current monthly follow-up sequence takes ${num(baselineHours)} hours.`;
-    $('target-pill').textContent=`${num(r.target)} attended appointments / month`;
-    $('comparison-body').innerHTML=modelRows(r);
-    $('hours-body').innerHTML=hoursRows(r);
+    const r=M.calculate(state),{today:t,current:c,hired:h,capacity:k,plan:p}=r;
+    $('payroll-fields').hidden=state.operator!=='team';
+    $('basis-pill').textContent=R.basis(state);
+    $('baseline-period').textContent=state.period+' / '+state.source;
+    $('today-stats').innerHTML=stats([['Monthly cash',t.available?money(t.cash):'Incomplete'],['Attended appointments',num(t.held)],['Cash cost / show',money(t.costHeld,2)],['Your setting hours',num(t.ownerHours)+' hrs',state.operator==='team'?num(t.dialing)+' paid-team follow-up hours':'Follow-up, retries & setting admin']]);
+    $('capacity-copy').textContent=num(t.held)+' of '+num(k.limit)+' monthly appointment slots used';
+    $('capacity-gap').textContent=num(k.gap)+' empty slots';
+    $('capacity-bar').style.width=Math.min(100,k.utilization||0)+'%';
+    $('today-note').textContent='This is today’s recorded baseline. It is separate from the growth projections below.';
+    $('price-pill').textContent=money(state.price)+' / show · '+(state.quoteStatus==='quoted'?'Quoted':'Starting example');
+    $('plan-label').textContent=p.contribution<0?'PROPOSED PLAN / REVIEW THE SHORTFALL':'YOUR PROPOSED MONTHLY PLAN';
+    $('plan-stats').innerHTML=stats([['Additional shows',num(p.shows)],['Monthly investment',money(p.investment)],[p.contribution<0?'Potential shortfall':'Potential contribution',money(p.contribution),'Before other business costs'],['Your setting hours avoided',r.ownerTime===null?'Unavailable':num(r.ownerTime)+' hrs',state.compare==='hired'?'Versus hiring a setter':'Versus scaling your process']]);
+    $('plan-equation').textContent=num(p.shows)+' shows × '+num(state.close)+'% close × '+money(r.netValue)+' net sale value = '+money(p.saleValue)+' potential sale value, less '+money(p.investment)+' appointment spending.';
+    $('break-even').textContent=R.coverage(state,r);
+    $('plan-note').textContent='This plan moves from '+num(t.held)+' to '+num(p.totalShows)+' attended appointments per month, with '+num(p.remaining)+' slots remaining. Full unused capacity is an opportunity ceiling, not a delivery promise.';
+    $('capacity-ceiling').textContent='Filling all '+num(k.gap)+' empty slots would represent '+money(k.saleValue)+' in potential monthly sale value, or '+money(k.contribution)+' after Lion appointment costs and before other business costs. This ceiling is separate from the proposed '+num(p.shows)+'-show starting plan and assumes every unused slot is filled.';
     const warnings=[];
-    if(r.target===0)warnings.push('The comparison target is zero; unit costs and break-even pricing are undefined.');
-    if(!c.available)warnings.push(state.operator==='team'&&state.staffHourly<=0?'Enter the actual wage paid to your existing staff to compare that cash cost.':'The current lead model cannot reach the target with no attended output or a zero funnel conversion rate.');
-    if(!h.available)warnings.push('The setter model needs a non-zero adjusted conversion rate and available follow-up hours.');
-    if(state.currentAppointments>state.capacity)warnings.push('Current attended volume exceeds reported capacity. The empty-slot opportunity is zero.');
-    if(r.target>state.capacity)warnings.push('The selected comparison target exceeds reported capacity.');
-    if(Math.abs(state.currentAppointments-r.funnel.held)>.1)warnings.push('Recorded attended appointments and the funnel estimate differ. Check that inputs cover the same leads and time period.');
-    $('model-warning').hidden=warnings.length===0;$('model-warning').textContent=warnings.join(' ');
-    $('salary-only').textContent=money(r.salaryOnly,2);$('full-booked').textContent=money(h.costHeld,2);
-    $('setup-breakdown').innerHTML=[['One-time setup cash',money(h.startup),'Recruiting / other one-time paid expenses'],['Your hiring & training',`${num(h.hiringHours)} hrs`,`${num(h.recruitHours)} hiring + ${num(h.trainingHours)} training hours`],['Your ongoing supervision',`${num(h.ownerHours)} hrs / mo`,'Separate from the setter’s follow-up hours'],['Time until ready',`${num(state.rampWeeks)} weeks`,'Recruiting and onboarding lead time']].map(([label,value,detail])=>`<div><span>${label}</span><strong>${value}</strong><small>${detail}</small></div>`).join('');
-    const baselineBook=state.book;
-    $('penalty-note').textContent=`${num(baselineBook,2)}% baseline booking × (1 − ${num(state.penalty)}%) = ${num(h.effectiveBook,2)}% effective booking rate.`;
-    const extraLeads=c.available&&h.available?h.leads-c.leads:null;
-    $('performance-story').textContent=`At ${num(state.penalty)}% lower booking performance, the setter needs ${extraLeads===null?'a viable conversion rate':`${num(Math.abs(extraLeads))} ${extraLeads>=0?'more':'fewer'} leads than the current model`} to reach the same attended volume. Salary is paid for the full month. Lead and tool expenses are additional, and supervision takes ${num(h.ownerHours)} of your hours per month. The modeled workload requires ${num(h.setters,0)} ${h.setters===1?'setter':'setters'}.`;
-    $('talk-track').innerHTML=`<ol><li><strong>Start with the empty calendar.</strong> “You can take ${num(k.limit)} appointments but currently attend ${num(k.current)}. What is preventing the remaining ${num(k.gap)} slots from getting filled?”</li><li><strong>Put a value on the gap.</strong> “At your ${num(state.close)}% close rate, those slots represent ${money(k.saleValue)} in potential monthly sale value and ${money(k.contribution)} after Lion’s appointment cost. What would that change for your business?”</li><li><strong>Pressure-test hiring.</strong> “Who will own the ${num(h.hiringHours)} hours of hiring/training, ${num(h.ownerHours)} hours of monthly supervision, and ${num(state.rampWeeks)} weeks until ready?”</li><li><strong>Agree on the next step.</strong> “Which product, market, and monthly appointment volume should we start with?”</li></ol>`;
-    $('methodology').innerHTML=`<p><strong>Capacity opportunity:</strong> empty slots = max(0, attended capacity − current attended appointments). Potential sales = empty slots × current close rate. Sale value = potential sales × commission/contribution × (1 − reserve). Potential additional contribution = that sale value − empty slots × Lion price. This estimates filling unused capacity, before other business costs; it is not added to the separate equal-volume cost savings.</p><p><strong>Current process:</strong> current attended count ÷ monthly leads anchors cost per appointment. Entering attended volume calibrates booking rate; changes to lead count, connect, booking, or show rates update the attended estimate. All models are sized to the selected monthly attended target. Required leads = target ÷ observed lead-to-attended yield. Follow-up hours = required leads × minutes per lead ÷ 60. Cash cost includes lead spend, tools, and actual paid staff wages only. Agent time is reported in hours, without a dollar valuation. When an existing paid team is selected, enter its actual staff wage.</p><p><strong>Hired setter:</strong> current baseline yield × (1 − booking performance reduction), using the current minutes per lead. Setters needed = max(1, round up required follow-up hours ÷ hours available per setter). Each setter receives the full monthly salary, regardless of shows. Monthly cash cost includes leads, salary, tools, and other paid team costs. Recruiting expenses are separate one-time cash costs. Follow-up, supervision, interviews, and training are shown as hours: operations hours = follow-up + supervision; one-time setup hours = interviews + training. Your monthly involvement is shown separately from the setter’s follow-up hours. Paid setter training is covered by salary and is not added twice. Setup is not divided across months or included again in recurring cost. Readiness weeks do not automatically create a lost-sales estimate.</p><p><strong>Lion:</strong> attended target × quoted appointment price. Pay per show only. Sales value uses the prospect’s current close rate and net sale value, with no extra Lion conversion assumptions. Break-even Lion price = selected model’s monthly cash cost ÷ attended target. All values are editable planning assumptions, not guaranteed results.</p>`;
-    $('print-report').innerHTML=window.LionReport.html(state,r);
+    if(state.currentAppointments>state.capacity)warnings.push('Reported attendance exceeds capacity. There is no unused capacity to fill.');
+    if(state.proposed>Math.floor(k.gap))warnings.push('Requested '+num(state.proposed)+' extra shows; this plan is limited to '+num(p.shows)+' within reported capacity. The requested field has not changed.');
+    if(!p.shows)warnings.push('Choose a positive volume within unused capacity before proposing a starting plan.');
+    else if(p.contribution<0)warnings.push('At these close-rate and sale-value assumptions, appointment spending exceeds modeled sale value.');
+    if(p.breakEvenSales!==null&&p.breakEvenSales>p.shows)warnings.push('Even closing every proposed appointment would not cover appointment spending.');
+    $('plan-warning').hidden=!warnings.length;$('plan-warning').textContent=warnings.join(' ');
+    $('comparison-title').textContent='Three ways to add '+num(p.shows)+' attended appointments';
+    $('comparison-body').innerHTML=rowHtml(R.rows(r));
+    document.querySelectorAll('[data-compare]').forEach(e=>e.setAttribute('aria-pressed',e.dataset.compare===state.compare));
+    $('decision-copy').textContent=R.decision(state,r);
+    const missing=[];
+    if(!c.available)missing.push(!t.available?'Enter the actual wage paid to the current team.':'Your process needs recorded attended output from the same lead cohort to project more shows.');
+    if(!h.available)missing.push('The hiring scenario needs a viable yield and available setter hours.');
+    if(state.currentAppointments>state.leads)missing.push('Recorded shows exceed lead count; check cohort and reporting period before comparing.');
+    $('comparison-warning').hidden=!missing.length;$('comparison-warning').textContent=missing.join(' ');
+    const hrs=n=>num(n)+' hrs';
+    $('detail-body').innerHTML=rowHtml([
+      ['Required additional leads',val(c,'leads',num),val(h,'leads',num),'Included'],
+      ['Additional lead spending',val(c,'leadCost'),val(h,'leadCost'),'Included'],
+      ['Paid wages / salary',val(c,'labor'),val(h,'labor'),'Included'],
+      ['New tools / other cash costs',val(c,'tools'),val(h,'tools'),'Included'],
+      ['New setters required','Existing process',h.setters===null?'Unavailable':num(h.setters,0),'Included'],
+      ['Follow-up operations / month',val(c,'dialing',hrs),val(h,'dialing',hrs),'Handled by Lion'],
+      ['Your supervision / month','0 hrs',val(h,'ownerHours',hrs),'Handled by Lion'],
+      ['Your hiring hours, once','0 hrs',val(h,'recruitHours',hrs),'Handled by Lion'],
+      ['Your training hours, once','0 hrs',val(h,'trainingHours',hrs),'Handled by Lion'],
+      ['Hiring scenario readiness','Existing process',num(state.rampWeeks)+' weeks','Confirm launch']
+    ]);
+    $('funnel-check').textContent='Funnel estimate: '+num(r.funnel.held)+' shows. Recorded attendance: '+num(t.held)+'. '+(Math.abs(r.funnel.held-t.held)>.1?'They differ; check that the rates cover the same cohort and period. Recorded attendance stays unchanged.':'The inputs reconcile.');
+    $('hire-summary').textContent=(h.available?num(h.setters,0)+' setter(s) for this additional volume; '+money(h.labor)+' salary + '+money(h.tools)+' tools / other cash costs. '+num(h.ownerHours)+' supervision hours per month; '+money(h.startup)+' setup cash + '+num(h.hiringHours)+' hiring / training hours once.':'Review missing workload inputs.')+' Performance scenario: '+(state.penalty===0?'equal to the current process.':num(state.penalty)+'% reduction.');
+    $('methodology').innerHTML='<p><strong>Today:</strong> leads × cost per lead + existing tools + actual paid staff wages. Your own time has no dollar value.</p><p><strong>Growth:</strong> proposed shows are limited to unused capacity. Observed yield = recorded attendance ÷ leads; additional required leads = proposed shows ÷ yield. Additional follow-up hours = required leads × current monthly follow-up hours ÷ current leads. The current process includes only new lead spending, paid staff wages, and the extra tools budget; existing tools are not charged again. Stable yield, lead availability, and workload are planning assumptions.</p><p><strong>Hiring:</strong> observed yield × (1 − optional performance reduction). Setters = round up follow-up hours ÷ available hours, with a full salary for each setter. Tools, supervision, recruiting cash, and hiring/training hours scale by staff count. Salary already covers paid setter training; owner training time stays in hours. One-time setup is never spread across monthly spending. Readiness weeks do not create a lost-sales estimate.</p><p><strong>Lion:</strong> proposed attended shows × appointment price. Potential sales use the prospect’s close rate and net sale value after reserve. Contribution subtracts Lion appointment spending only, before other business costs. Sales needed to cover spend = round up investment ÷ net sale value. Cost differences at the same extra volume are separate from growth contribution and are never added to it.</p>';
+    $('benefit-title').textContent=state.priority?'Address the friction: '+state.priority:'Keep your focus on closing.';
+    $('personal-copy').textContent=state.priority?'You identified “'+state.priority+'” as the biggest friction. This plan adds '+num(p.shows)+' attended appointments while Lion handles the appointment-setting work.':'Lion handles appointment setting for the proposed extra volume.';
+    $('benefits').innerHTML=R.benefits(state,r).map(([a,b])=>'<article><h3>'+esc(a)+'</h3><p>'+esc(b)+'</p></article>').join('');
+    $('proposal-summary').innerHTML='<strong>'+num(p.shows)+' attended appointments / month</strong><span>'+esc(state.product)+' · '+esc(state.market||'Market to confirm')+'</span><span>'+money(state.price)+' / show · '+money(p.investment)+' monthly investment</span><span>'+esc(state.quoteStatus==='quoted'?'Product / market quote entered':'Starting-price example; final quote to confirm')+'</span>';
+    $('next-summary').textContent=R.next(state,r);
+    $('presentation-context').textContent=(state.prospect||'Prospective partner')+' / '+state.product+' / '+R.basis(state);
+    $('print-report').innerHTML=R.html(state,r);
   }
   document.addEventListener('input',e=>{
     const key=e.target.dataset.key;if(!key)return;
-    if(e.target.type==='checkbox')state[key]=e.target.checked;
-    else if(schemas[key]){if(e.target.value==='')return;const n=Number(e.target.value);if(!Number.isFinite(n))return;state[key]=Math.max(schemas[key].min,Math.min(schemas[key].max,n));linkFunnel(key);hydrate(e.target);}
-    else state[key]=e.target.value;
+    if(schemas[key]){
+      if(e.target.value==='')return;
+      const n=Number(e.target.value);if(!Number.isFinite(n))return;
+      state[key]=Math.min(schemas[key].max,Math.max(schemas[key].min,n));hydrate(e.target);
+    }else state[key]=e.target.value;
     render();persist();
   });
-  document.addEventListener('change',e=>{const key=e.target.dataset.key;if(schemas[key]){if(e.target.value===''){state[key]=schemas[key].min;linkFunnel(key);}hydrate();render();persist();}});
-  function selectTab(key){document.querySelectorAll('[data-tab]').forEach(b=>{const chosen=b.dataset.tab===key;b.setAttribute('aria-selected',chosen);b.tabIndex=chosen?0:-1;$('panel-'+b.dataset.tab).hidden=!chosen;});}
-  document.querySelectorAll('[data-tab]').forEach(b=>{b.addEventListener('click',()=>selectTab(b.dataset.tab));b.addEventListener('keydown',e=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;e.preventDefault();const tabs=['current','hired','lion'],i=tabs.indexOf(b.dataset.tab),next=e.key==='Home'?0:e.key==='End'?2:(i+(e.key==='ArrowRight'?1:2))%3;selectTab(tabs[next]);$('tab-'+tabs[next]).focus();});});
+  document.addEventListener('change',e=>{const key=e.target.dataset.key;if(schemas[key]){if(e.target.value==='')state[key]=schemas[key].min;hydrate();render();persist();}});
+  function selectTab(key){
+    document.querySelectorAll('[data-tab]').forEach(b=>{const selected=b.dataset.tab===key;b.setAttribute('aria-selected',selected);b.tabIndex=selected?0:-1;$('panel-'+b.dataset.tab).hidden=!selected;});
+  }
+  document.querySelectorAll('[data-tab]').forEach(b=>{
+    b.addEventListener('click',()=>selectTab(b.dataset.tab));
+    b.addEventListener('keydown',e=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;e.preventDefault();const tabs=['current','hired','lion'],i=tabs.indexOf(b.dataset.tab),next=e.key==='Home'?0:e.key==='End'?2:(i+(e.key==='ArrowRight'?1:2))%3;selectTab(tabs[next]);$('tab-'+tabs[next]).focus();});
+  });
   document.querySelectorAll('[data-compare]').forEach(b=>b.addEventListener('click',()=>{state.compare=b.dataset.compare;render();persist();}));
-  $('reset').addEventListener('click',()=>{state={...M.defaults};hydrate();render();persist();selectTab('current');$('toast').textContent='Reset to editable starting examples.';$('toast').hidden=false;setTimeout(()=>$('toast').hidden=true,2500);});
+  $('present').addEventListener('click',()=>{presenting=!presenting;document.body.classList.toggle('presenting',presenting);$('present').setAttribute('aria-pressed',presenting);$('present').textContent=presenting?'Edit inputs':'Present';$('presentation-context').hidden=!presenting;});
+  $('reset').addEventListener('click',()=>{state={...M.defaults};hydrate();render();persist();selectTab('current');});
   $('export').addEventListener('click',async()=>{
     const button=$('export');button.disabled=true;button.textContent='Preparing PDF…';
     try{
-      const bytes=await window.LionReport.build(state,M.calculate(state),window.PDFLib);
-      const url=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));
-      const a=document.createElement('a');a.href=url;a.download=`Lion-Appointment-Opportunity-${(state.prospect||'Summary').replace(/[^a-zA-Z0-9-]/g,'-').slice(0,60)}.pdf`;a.click();setTimeout(()=>URL.revokeObjectURL(url),60000);
+      const bytes=await R.build(state,M.calculate(state),window.PDFLib),url=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));
+      const a=document.createElement('a');a.href=url;a.download='Lion-Appointment-Plan-'+(state.prospect||'Summary').replace(/[^a-zA-Z0-9-]/g,'-').slice(0,60)+'.pdf';a.click();setTimeout(()=>URL.revokeObjectURL(url),60000);
     }catch{$('toast').textContent='The PDF could not be prepared. Please try again.';$('toast').hidden=false;setTimeout(()=>$('toast').hidden=true,4500);}
     finally{button.disabled=false;button.textContent='Download 1-page PDF';}
   });
-  window.addEventListener('beforeprint',render);
-  hydrate();render();
+  window.addEventListener('beforeprint',render);hydrate();render();
 })();
