@@ -23,9 +23,9 @@ test('setter performance reduction is relative and applied once',()=>{
   const equal=calculate({...defaults,targetMode:'current',penalty:0});near(equal.hired.leads,200);
 });
 test('setup is separate and never buried in recurring cost',()=>{
-  const r=calculate({...defaults,targetMode:'current'});near(r.hired.startup,1600);near(r.hired.cashStartup,400);
+  const r=calculate({...defaults,targetMode:'current'});near(r.hired.startup,1500);near(r.hired.cashStartup,300);
   near(r.hired.total,r.hired.ongoing);near(r.hired.total,r.hired.cash+r.hired.management);
-  near(r.hired.firstMonth-r.hired.total,1600);
+  near(r.hired.firstMonth-r.hired.total,1500);
   const extra=calculate({...defaults,targetMode:'current',hireFee:3000});near(extra.hired.total,r.hired.total);near(extra.hired.startup-r.hired.startup,2700);
 });
 test('Lion is always pay per show and uses the prospect close rate',()=>{
@@ -44,9 +44,19 @@ test('unfavorable economics and unreachable lead scenarios remain visible',()=>{
   const impossible=calculate({...defaults,penalty:100});assert.equal(impossible.hired.available,false);
   const noClose=calculate({...defaults,close:0});assert.equal(noClose.current.costSale,null);assert.equal(noClose.lion.costSale,null);near(noClose.capacity.saleValue,0);
 });
-test('custom setter funnel, net-sale reserve, and paid labor are respected',()=>{
-  const s={...defaults,targetMode:'manual',target:30,hireLinked:false,hireConnect:50,hireBook:40,hireShow:75,hireClose:30,reserve:10,operator:'team'};
-  const r=calculate(s);near(r.hired.leads,30/(.5*.4*.85*.75));near(r.hired.sales,9);near(r.netValue,2250);
+test('setter inherits sales assumptions and time per lead; salary is never prorated to output',()=>{
+  const s={...defaults,targetMode:'manual',target:30,currentAppointments:40,close:30,reserve:10,operator:'team'};
+  const r=calculate(s);near(r.hired.leads,30/(.2*.85));near(r.hired.sales,9);near(r.netValue,2250);
+  near(r.hired.labor,1200);near(r.hired.dialing,r.hired.leads*defaults.minutes/60);
+  const smaller=calculate({...s,target:10});near(smaller.hired.labor,1200);near(smaller.salaryOnly,120);
   near(r.current.cash,r.current.total);near(r.current.ownerHours,0);
   near(calculate({...s,rampWeeks:12}).hired.total,r.hired.total);
+  const zero=calculate({...s,target:0});near(zero.hired.labor,1200);assert.equal(zero.salaryOnly,null);
+});
+test('workload scales setter salaries, tools, management and setup at staffing boundaries',()=>{
+  const s={...defaults,targetMode:'manual',target:40,leads:160,currentAppointments:40,minutes:60,penalty:0,setterHours:160};
+  const one=calculate(s);assert.equal(one.hired.setters,1);near(one.hired.labor,1200);near(one.hired.dialing,160);
+  const two=calculate({...s,target:80});assert.equal(two.hired.setters,2);near(two.hired.labor,2400);near(two.hired.tools,300);
+  near(two.hired.management,1200);near(two.hired.startup,3000);near(two.hired.hiringHours,32);
+  assert.equal(calculate({...s,setterHours:0}).hired.available,false);
 });
