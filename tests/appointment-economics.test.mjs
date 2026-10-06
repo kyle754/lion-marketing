@@ -14,8 +14,8 @@ test('capacity gap uses actual attendance and shows net value after appointment 
 });
 test('current attended volume anchors all unit economics and target choices',()=>{
   const r=calculate({...defaults,currentAppointments:40,targetMode:'current'});
-  near(r.current.leads,200);near(r.current.total,11150);near(r.current.cash,9150);near(r.current.ownerHours,40);
-  near(r.current.costHeld,11150/40);near(r.lion.total,10000);near(r.savings,1150);near(r.cashSavings,-850);
+  near(r.current.leads,200);near(r.current.total,9150);near(r.current.cash,9150);near(r.current.ownerHours,40);
+  near(r.current.costHeld,9150/40);near(r.lion.total,10000);near(r.savings,-850);near(r.cashSavings,-850);
   near(r.hired.held,r.current.held);near(r.lion.held,r.current.held);
 });
 test('setter performance reduction is relative and applied once',()=>{
@@ -23,9 +23,9 @@ test('setter performance reduction is relative and applied once',()=>{
   const equal=calculate({...defaults,targetMode:'current',penalty:0});near(equal.hired.leads,200);
 });
 test('setup is separate and never buried in recurring cost',()=>{
-  const r=calculate({...defaults,targetMode:'current'});near(r.hired.startup,1500);near(r.hired.cashStartup,300);
-  near(r.hired.total,r.hired.ongoing);near(r.hired.total,r.hired.cash+r.hired.management);
-  near(r.hired.firstMonth-r.hired.total,1500);
+  const r=calculate({...defaults,targetMode:'current'});near(r.hired.startup,300);near(r.hired.hiringHours,16);
+  near(r.hired.total,r.hired.ongoing);near(r.hired.total,r.hired.cash);
+  near(r.hired.firstMonth-r.hired.total,300);
   const extra=calculate({...defaults,targetMode:'current',hireFee:3000});near(extra.hired.total,r.hired.total);near(extra.hired.startup-r.hired.startup,2700);
 });
 test('Lion is always pay per show and uses the prospect close rate',()=>{
@@ -45,7 +45,7 @@ test('unfavorable economics and unreachable lead scenarios remain visible',()=>{
   const noClose=calculate({...defaults,close:0});assert.equal(noClose.current.costSale,null);assert.equal(noClose.lion.costSale,null);near(noClose.capacity.saleValue,0);
 });
 test('setter inherits sales assumptions and time per lead; salary is never prorated to output',()=>{
-  const s={...defaults,targetMode:'manual',target:30,currentAppointments:40,close:30,reserve:10,operator:'team'};
+  const s={...defaults,targetMode:'manual',target:30,currentAppointments:40,close:30,reserve:10,operator:'team',staffHourly:20};
   const r=calculate(s);near(r.hired.leads,30/(.2*.85));near(r.hired.sales,9);near(r.netValue,2250);
   near(r.hired.labor,1200);near(r.hired.dialing,r.hired.leads*defaults.minutes/60);
   const smaller=calculate({...s,target:10});near(smaller.hired.labor,1200);near(smaller.salaryOnly,120);
@@ -57,6 +57,22 @@ test('workload scales setter salaries, tools, management and setup at staffing b
   const s={...defaults,targetMode:'manual',target:40,leads:160,currentAppointments:40,minutes:60,penalty:0,setterHours:160};
   const one=calculate(s);assert.equal(one.hired.setters,1);near(one.hired.labor,1200);near(one.hired.dialing,160);
   const two=calculate({...s,target:80});assert.equal(two.hired.setters,2);near(two.hired.labor,2400);near(two.hired.tools,300);
-  near(two.hired.management,1200);near(two.hired.startup,3000);near(two.hired.hiringHours,32);
+  near(two.hired.ownerHours,16);near(two.hired.startup,600);near(two.hired.hiringHours,32);
+  near(two.hired.operationsHours,336);near(two.hired.recruitHours,12);near(two.hired.trainingHours,20);
   assert.equal(calculate({...s,setterHours:0}).hired.available,false);
+});
+test('agent and management hours change time totals without creating a dollar cost',()=>{
+  const s={...defaults,currentAppointments:40,targetMode:'current',compare:'hired'};
+  const r=calculate(s);
+  const more=calculate({...s,hourly:99999,managerHourly:99999,recruitHours:12,trainerHours:18,manageHours:24});
+  near(more.current.total,r.current.total);near(more.hired.total,r.hired.total);near(more.hired.startup,r.hired.startup);
+  near(more.savings,r.savings);near(more.threshold,r.threshold);near(more.ownerTime,24);near(more.hired.hiringHours,30);
+  near(more.hired.operationsHours,more.hired.dialing+24);
+  assert.equal('timeValue' in more.current,false);assert.equal('management' in more.hired,false);
+});
+test('only an actual paid staff wage is included in the current cash cost',()=>{
+  const s={...defaults,currentAppointments:40,targetMode:'current',staffHourly:20};
+  const owner=calculate(s);near(owner.current.labor,0);near(owner.current.cash,9150);
+  const staff=calculate({...s,operator:'team'});near(staff.current.labor,800);near(staff.current.cash,9950);near(staff.current.ownerHours,0);
+  assert.equal(calculate({...s,operator:'team',staffHourly:0}).current.available,false);
 });

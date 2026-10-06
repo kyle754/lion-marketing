@@ -8,16 +8,17 @@
     const v=(m,key,f=money)=>m.available?f(m[key]):'Unavailable';
     return [
       ['Cost / attended appointment',v(r.current,'costHeld',n=>money(n,2)),v(r.hired,'costHeld',n=>money(n,2)),money(r.lion.costHeld,2)],
-      ['Cash spend / month',v(r.current,'cash'),v(r.hired,'cash'),money(r.lion.cash)],
-      ['Monthly cost incl. time value',v(r.current,'total'),v(r.hired,'total'),money(r.lion.total)],
-      ['Your setting / management hours',v(r.current,'ownerHours',n=>num(n)+' hrs'),v(r.hired,'ownerHours',n=>num(n)+' hrs'),'0 hrs'],
-      ['One-time hiring & training',money(0),money(r.hired.startup),money(0)],
+      ['Monthly cash cost',v(r.current,'cash'),v(r.hired,'cash'),money(r.lion.cash)],
+      ['Follow-up hours / month',v(r.current,'dialing',n=>num(n)+' hrs'),v(r.hired,'dialing',n=>num(n)+' hrs'),'0 hrs'],
+      ['Your supervision hours / month','0 hrs',v(r.hired,'ownerHours',n=>num(n)+' hrs'),'0 hrs'],
+      ['One-time setup cash',money(0),money(r.hired.startup),money(0)],
+      ['Your one-time hiring / training','0 hrs',num(r.hired.hiringHours)+' hrs','0 hrs'],
     ];
   }
   const next=(s,r)=>cut(s.notes||`Agree on ${s.product.toLowerCase()}, market, and monthly volume. Plan to fill the ${num(r.capacity.gap)} remaining attended-appointment slots.`,190);
   function html(s,r){
     const k=r.capacity;
-    return `<div class="decision-report"><div class="print-brand"><div class="brand"><span class="monogram">LM</span>LION MARKETING</div><span>${date()}</span></div><p class="eyebrow gold">APPOINTMENT OPPORTUNITY • MONTHLY</p><h1>Make room for more sales.</h1><p>Prepared for <strong>${esc(cut(s.prospect||'Prospective partner',80))}</strong> • ${esc(s.product)}</p><div class="print-capacity">${[['Capacity',k.limit],['Currently attended',k.current],['Empty slots',k.gap]].map(([label,v])=>`<div><span>${label}</span><strong>${num(v)}</strong></div>`).join('')}<div><span>Capacity used</span><strong>${num(k.utilization)}%</strong></div></div><div class="print-opportunity"><p class="eyebrow">POTENTIAL MONTHLY CONTRIBUTION FROM EMPTY SLOTS</p><strong>${money(k.contribution)}</strong><p>${num(k.gap)} more shows × ${num(s.close)}% close × ${money(r.netValue)} net value = ${money(k.saleValue)} sale value.<br>Less ${money(k.lionInvestment)} at ${money(s.price)} per show. Before other business costs.</p></div><h2>Three ways to fill the calendar</h2><p>Comparison at ${num(r.target)} attended appointments per month. One-time setup is separate.</p><table><thead><tr><th></th><th>Current</th><th>Hired setter</th><th>Lion</th></tr></thead><tbody>${rows(r).map(row=>`<tr>${row.map((v,i)=>i?`<td>${esc(v)}</td>`:`<th>${esc(v)}</th>`).join('')}</tr>`).join('')}</tbody></table><h2>With Lion, your focus stays on closing.</h2><div class="print-benefits"><div><strong>No setter to hire</strong><p>Skip recruiting, onboarding, and training.</p></div><div><strong>No setting team to manage</strong><p>Skip call reviews and daily supervision.</p></div><div><strong>Pay for attendance</strong><p>One agreed price per showed appointment.</p></div></div><h3>Recommended next step</h3><p>${esc(next(s,r))}</p><p class="print-fine">Assumptions: ${num(s.close)}% close; ${money(r.netValue)} net value per sale; ${money(s.price)} per show. Setter: ${money(s.setterMonthly)}/month each; ${num(r.hired.setters,0)} needed; ${num(s.penalty)}% booking reduction assumed. Monthly modeled costs include owner/agent time value, which is separate from cash savings. Potential value is a forecast, not guaranteed.</p></div>`;
+    return `<div class="decision-report"><div class="print-brand"><div class="brand"><span class="monogram">LM</span>LION MARKETING</div><span>${date()}</span></div><p class="eyebrow gold">APPOINTMENT OPPORTUNITY • MONTHLY</p><h1>Make room for more sales.</h1><p>Prepared for <strong>${esc(cut(s.prospect||'Prospective partner',80))}</strong> • ${esc(s.product)}</p><div class="print-capacity">${[['Capacity',k.limit],['Currently attended',k.current],['Empty slots',k.gap]].map(([label,v])=>`<div><span>${label}</span><strong>${num(v)}</strong></div>`).join('')}<div><span>Capacity used</span><strong>${num(k.utilization)}%</strong></div></div><div class="print-opportunity"><p class="eyebrow">POTENTIAL MONTHLY CONTRIBUTION FROM EMPTY SLOTS</p><strong>${money(k.contribution)}</strong><p>${num(k.gap)} more shows × ${num(s.close)}% close × ${money(r.netValue)} net value = ${money(k.saleValue)} sale value.<br>Less ${money(k.lionInvestment)} at ${money(s.price)} per show. Before other business costs.</p></div><h2>Three ways to fill the calendar</h2><p>Comparison at ${num(r.target)} attended appointments per month. One-time setup is separate.</p><table><thead><tr><th></th><th>Current</th><th>Hired setter</th><th>Lion</th></tr></thead><tbody>${rows(r).map(row=>`<tr>${row.map((v,i)=>i?`<td>${esc(v)}</td>`:`<th>${esc(v)}</th>`).join('')}</tr>`).join('')}</tbody></table><h2>With Lion, your focus stays on closing.</h2><div class="print-benefits"><div><strong>No setter to hire</strong><p>Skip recruiting, onboarding, and training.</p></div><div><strong>No setting team to manage</strong><p>Skip call reviews and daily supervision.</p></div><div><strong>Pay for attendance</strong><p>One agreed price per showed appointment.</p></div></div><h3>Recommended next step</h3><p>${esc(next(s,r))}</p><p class="print-fine">Assumptions: ${num(s.close)}% close; ${money(r.netValue)} net value per sale; ${money(s.price)} per show. Setter: ${money(s.setterMonthly)}/month each; ${num(r.hired.setters,0)} needed; ${num(s.penalty)}% booking reduction assumed. Costs are cash expenses only. Follow-up, supervision, hiring, and training hours are shown separately, with no hourly dollar value. Potential value is a forecast, not guaranteed.</p></div>`;
   }
   async function build(s,r,lib){
     const {PDFDocument,StandardFonts,rgb}=lib;
@@ -61,9 +62,9 @@
     page.drawRectangle({x:36,y:401,width:540,height:25,color:paper});
     ['','CURRENT','HIRED SETTER','LION / PAY PER SHOW'].forEach((v,i)=>text(v,colX[i]+(i?10:0),410,8,bold,i===3?ink:muted,colW[i]-17));
     rows(r).forEach((row,i)=>{
-      const bottom=375-i*25;
-      if(i===2)page.drawRectangle({x:36,y:bottom-1,width:540,height:25,color:paper});
-      row.forEach((v,j)=>text(v,colX[j]+(j?10:0),bottom+7,j===0?8.5:10,i===2||j===3?bold:sans,ink,colW[j]-17));
+      const bottom=375-i*20;
+      if(i===1)page.drawRectangle({x:36,y:bottom-1,width:540,height:20,color:paper});
+      row.forEach((v,j)=>text(v,colX[j]+(j?10:0),bottom+6,j===0?8.5:10,i===1||j===3?bold:sans,ink,colW[j]-17));
       page.drawLine({start:{x:36,y:bottom},end:{x:576,y:bottom},thickness:.4,color:lineColor});
     });
     text('With Lion, your focus stays on closing.',36,251,19,serif);
@@ -73,7 +74,7 @@
     paragraph(next(s,r),36,145,540,10,ink,2,13);
     line(116);
     paragraph(`Assumptions: ${num(s.close)}% close | ${money(r.netValue)} net value per sale | ${money(s.price)} per show. Setter: ${money(s.setterMonthly)}/month each; ${num(r.hired.setters,0)} needed; ${num(s.penalty)}% booking reduction assumed.`,36,101,540,8,muted,2,11);
-    paragraph('Monthly modeled cost includes owner / agent time value; cash spend excludes that time. Setup is separate. Empty-slot contribution is a forecast before other business expenses and is separate from equal-volume cost savings.',36,73,540,7.8,muted,2,10);
+    paragraph('Costs are cash expenses only. Hours are shown separately, without an hourly dollar value. Setup is separate. Follow-up is handled by the setter in the hiring option. Empty-slot contribution is a forecast before other business expenses.',36,73,540,7.8,muted,2,10);
     text('LION MARKETING  /  APPOINTMENT ECONOMICS',36,39,7,bold,muted);text('ILLUSTRATIVE ESTIMATE / 1 PAGE',418,39,7,sans,muted,158);
     pdf.setTitle('Lion Marketing - Appointment Opportunity');pdf.setAuthor('Lion Marketing');pdf.setSubject('Monthly capacity opportunity and appointment cost comparison');
     return pdf.save();
