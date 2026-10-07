@@ -4,7 +4,8 @@ import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 const context={};
 for(const file of ['model.js','report.js'])vm.runInNewContext(readFileSync(new URL('../public/internal/appointment-economics/'+file,import.meta.url),'utf8'),context);
-const {defaults,calculate}=context.LionModel,R=context.LionReport;
+const {calculate}=context.LionModel,R=context.LionReport;
+const defaults={...context.LionModel.defaults,volumeMode:"custom",penalty:0};
 const near=(a,b)=>assert.ok(Math.abs(a-b)<1e-8,`${a} should equal ${b}`);
 
 test('time is calculated from lead volume and mutually exclusive call outcomes',()=>{
@@ -51,11 +52,36 @@ test('zero funnel output blocks growth projections while recording incurred dial
  near(r.today.ownerHours,200/60);assert.equal(r.savings,null);
  assert.equal(calculate({...defaults,show:0}).current.available,false);
 });
-test('setter reduction is applied once and call stages are recomputed',()=>{
- const equal=calculate(defaults),reduced=calculate({...defaults,penalty:15});near(reduced.hired.leads,equal.hired.leads/.85);
- near(reduced.hired.callTime.booked,equal.hired.callTime.booked);near(reduced.hired.callTime.bookingTalkMinutes,equal.hired.callTime.bookingTalkMinutes);
- assert.ok(reduced.hired.callTime.connectTalkMinutes>equal.hired.callTime.connectTalkMinutes);
- near(reduced.hired.effectiveBook,46.75);assert.equal(calculate({...defaults,penalty:100}).hired.available,false);
+test('ramp reduction is temporary and costs the extra leads needed for the same shows',()=>{
+ const equal=calculate(defaults),reduced=calculate({...defaults,penalty:15,rampWeeks:30/7});
+ near(reduced.hired.leads,equal.hired.leads);near(reduced.hired.cash,equal.hired.cash);
+ near(reduced.hired.rampLeads,equal.hired.leads/.85);
+ near(reduced.hired.rampCallTime.booked,equal.hired.callTime.booked);
+ near(reduced.hired.rampBook,46.75);near(reduced.hired.effectiveBook,55);
+ near(reduced.hired.rampExtraCash,(reduced.hired.rampLeads-reduced.hired.leads)*45);
+ near(reduced.hired.firstMonth,reduced.hired.cash+reduced.hired.startup+reduced.hired.rampExtraCash);
+ const blocked=calculate({...defaults,penalty:100,rampWeeks:30/7});assert.equal(blocked.hired.rampAvailable,false);assert.equal(blocked.hired.firstMonth,null);assert.equal(blocked.hired.available,true);
+});
+test('first-month ramp weighting follows duration and does not add salary twice',()=>{
+ const full=calculate({...defaults,penalty:20,rampWeeks:30/7});
+ const partial=calculate({...defaults,penalty:20,rampWeeks:15/7});near(partial.hired.rampBook,49.5);
+ assert.ok(partial.hired.rampExtraCash<full.hired.rampExtraCash);
+ const none=calculate({...defaults,penalty:20,rampWeeks:0});near(none.hired.rampExtraCash,0);
+ near(none.hired.firstMonth,none.hired.cash+none.hired.startup);
+ const long=calculate({...defaults,penalty:20,rampWeeks:12});near(long.hired.rampBook,full.hired.rampBook);
+});
+test('capacity is the default recommendation, with manual smaller plans preserved and capped',()=>{
+ const d=context.LionModel.defaults;const full=calculate(d);near(full.target,40);near(full.plan.totalShows,80);
+ const fractional=calculate({...d,capacity:80,currentAppointments:22.275});near(fractional.target,57);
+ const custom=calculate({...d,volumeMode:'custom',proposed:10});near(custom.target,10);
+ near(calculate({...d,volumeMode:'custom',proposed:100}).target,40);
+ near(calculate({...d,currentAppointments:90}).target,0);
+});
+test('return multiple uses sale value and contribution subtracts appointment spending',()=>{
+ const r=calculate({...defaults,price:250,close:25,commission:3000});near(r.plan.returnMultiple,3);near(r.plan.saleValue,15000);near(r.plan.investment,5000);near(r.plan.contribution,10000);
+ near(r.plan.valuePerShow,750);near(r.plan.contributionPerShow,500);
+ near(calculate({...defaults,price:250,close:25,commission:3000,cpl:1}).plan.returnMultiple,3);
+ assert.equal(calculate({...defaults,price:0}).plan.returnMultiple,null);
 });
 test('salary is full-month and staffing scales from calculated call workload',()=>{
  near(calculate({...defaults,proposed:1}).hired.labor,1200);
@@ -86,10 +112,30 @@ test('investment coverage and unfavorable results remain explicit',()=>{
  near(calculate({...defaults,commission:1200,reserve:20}).plan.breakEvenSales,6);
  assert.equal(calculate({...defaults,commission:0}).plan.breakEvenSales,null);
  near(calculate({...defaults,close:0}).plan.contribution,-5000);
- assert.match(R.decision(defaults,calculate(defaults)),/more per month/);
+ assert.match(R.costDifference(defaults,calculate(defaults)),/more monthly/);
+ assert.match(R.decision(defaults,calculate(defaults)),/added dial attempts/);
 });
 test('report preserves proposal dates, escapes prospect text and omits removed metadata',()=>{
  const s={...defaults,prospect:'<script>alert(1)</script>',market:'Arizona',nextStep:'Review the quote',nextDate:'2026-10-12',launchDate:'2026-10-19'};
  const html=R.html(s,calculate(s));assert.match(html,/20 extra shows/);assert.match(html,/Arizona/);assert.match(html,/Oct 12, 2026/);assert.match(html,/Oct 19, 2026/);
  assert.doesNotMatch(html,/<script>/);assert.match(html,/&lt;script&gt;/);assert.doesNotMatch(html,/Editable examples|Typical month/);
+});
+
+test('cheap leads stay cheap while operating work and ramp costs remain visible',()=>{
+ const s={...defaults,cpl:1,penalty:15,close:25,commission:3000},r=calculate(s);
+ assert.ok(r.current.cash<r.lion.cash);near(r.plan.returnMultiple,3);
+ const copy=R.operations(s,r).map(row=>row.join(' ')).join(' ');
+ assert.match(copy,/additional dial attempts/);assert.match(copy,/sick-day coverage, turnover, and retraining/);assert.match(copy,/only when the prospect attends/);
+ const html=R.html(s,r);assert.match(html,/First-month cash/);assert.match(html,/post-ramp|Post-ramp/);assert.match(html,/3x projected sale value/);
+ assert.ok(r.hired.firstMonth>r.hired.cash+r.hired.startup);
+});
+
+test('initial staffing covers ramp workload and training salary is counted once',()=>{
+ const baseline=calculate(defaults),ramp=calculate({...defaults,penalty:20,rampWeeks:30/7});
+ const available=(baseline.hired.dialing+ramp.hired.rampCallTime.hours)/2;
+ const r=calculate({...defaults,penalty:20,rampWeeks:30/7,setterHours:available});
+ assert.ok(r.hired.dialing<available);assert.ok(r.hired.rampCallTime.hours>available);
+ assert.equal(r.hired.setters,2);near(r.hired.labor,2400);
+ near(r.hired.firstMonth,r.hired.leadCost+2400+r.hired.tools+r.hired.startup+r.hired.rampExtraCash);
+ near(r.hired.ownerHours,16);near(r.hired.hiringHours,32);
 });
