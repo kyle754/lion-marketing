@@ -5,7 +5,7 @@ import vm from 'node:vm';
 const context={};
 for(const file of ['model.js','report.js'])vm.runInNewContext(readFileSync(new URL('../public/internal/appointment-economics/'+file,import.meta.url),'utf8'),context);
 const {calculate}=context.LionModel,R=context.LionReport;
-const defaults={...context.LionModel.defaults,volumeMode:"custom",penalty:0};
+const defaults={...context.LionModel.defaults,volumeMode:"custom",penalty:0,attemptsPerLead:1,currentAppointments:40};
 const near=(a,b)=>assert.ok(Math.abs(a-b)<1e-8,`${a} should equal ${b}`);
 
 test('time is calculated from lead volume and mutually exclusive call outcomes',()=>{
@@ -71,10 +71,10 @@ test('first-month ramp weighting follows duration and does not add salary twice'
  const long=calculate({...defaults,penalty:20,rampWeeks:12});near(long.hired.rampBook,full.hired.rampBook);
 });
 test('capacity is the default recommendation, with manual smaller plans preserved and capped',()=>{
- const d=context.LionModel.defaults;const full=calculate(d);near(full.target,40);near(full.plan.totalShows,80);
+ const d=context.LionModel.defaults;const full=calculate(d);near(full.target,37);near(full.plan.totalShows,79.9);
  const fractional=calculate({...d,capacity:80,currentAppointments:22.275});near(fractional.target,57);
  const custom=calculate({...d,volumeMode:'custom',proposed:10});near(custom.target,10);
- near(calculate({...d,volumeMode:'custom',proposed:100}).target,40);
+ near(calculate({...d,volumeMode:'custom',proposed:100}).target,37);
  near(calculate({...d,currentAppointments:90}).target,0);
 });
 test('return multiple uses sale value and contribution subtracts appointment spending',()=>{
@@ -138,4 +138,31 @@ test('initial staffing covers ramp workload and training salary is counted once'
  assert.equal(r.hired.setters,2);near(r.hired.labor,2400);
  near(r.hired.firstMonth,r.hired.leadCost+2400+r.hired.tools+r.hired.startup+r.hired.rampExtraCash);
  near(r.hired.ownerHours,16);near(r.hired.hiringHours,32);
+});
+
+test('attendance updates from leads and each funnel rate, and updates the capacity recommendation',()=>{
+ const {updateInput}=context.LionModel;
+ let s={...defaults};
+ s=updateInput(s,'leads',300);near(s.currentAppointments,64.4);
+ s=updateInput(s,'connect',40);near(s.currentAppointments,42.9);
+ s=updateInput(s,'book',50);near(s.currentAppointments,39);
+ s=updateInput(s,'show',50);near(s.currentAppointments,30);
+ const r=calculate({...s,volumeMode:'capacity'});near(r.today.held,30);near(r.target,50);
+ near(r.today.costHeld,r.today.cash/30);
+ s=updateInput(s,'leads',0);near(s.currentAppointments,0);
+});
+test('manual attendance remains editable until a funnel input changes',()=>{
+ const {updateInput}=context.LionModel;
+ let s=updateInput(defaults,'currentAppointments',35);near(s.currentAppointments,35);
+ s=updateInput(s,'cpl',10);near(s.currentAppointments,35);
+ s=updateInput(s,'close',50);near(s.currentAppointments,35);
+ s=updateInput(s,'attemptsPerLead',5);near(s.currentAppointments,35);
+ s=updateInput(s,'leads',250);near(s.currentAppointments,53.6);
+ s=updateInput(s,'book',0);near(s.currentAppointments,0);
+});
+test('reset defaults use three dial attempts and matching attendance',()=>{
+ const d=context.LionModel.defaults,r=calculate(d);
+ near(d.attemptsPerLead,3);near(d.currentAppointments,42.9);
+ near(r.today.callTime.attempts,600);near(r.today.callTime.dialMinutes,600);
+ near(r.today.callTime.bookingTalkMinutes,660);near(r.today.ownerHours,1395/60);
 });

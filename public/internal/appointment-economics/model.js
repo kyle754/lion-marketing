@@ -3,12 +3,21 @@
     prospect:'',product:'Final Expense',source:'Paid inbound leads',priority:'Time spent chasing leads',
     market:'',nextStep:'',nextDate:'',launchDate:'',notes:'',quality:'',
     operator:'owner',leads:200,cpl:45,currentAppointments:40,capacity:80,
-    connect:60,book:55,show:65,close:20,dialSeconds:60,connectMinutes:2.5,bookedMinutes:10,attemptsPerLead:1,staffHourly:0,tools:150,extraTools:0,
+    connect:60,book:55,show:65,close:20,dialSeconds:60,connectMinutes:2.5,bookedMinutes:10,attemptsPerLead:3,staffHourly:0,tools:150,extraTools:0,
     commission:2500,reserve:0,proposed:20,volumeMode:'capacity',compare:'current',price:250,
     setterMonthly:1200,setterHours:160,penalty:15,hireFee:300,recruitHours:6,trainerHours:10,
     manageHours:8,hireTools:150,hireExtra:0,rampWeeks:4
   };
+  defaults.currentAppointments=projectedAttendance(defaults);
   const divide=(a,b)=>b>0?a/b:null;
+  function projectedAttendance(s){
+    return Math.round(s.leads*s.connect/100*s.book/100*s.show/100*10)/10;
+  }
+  function updateInput(s,key,value){
+    const next={...defaults,...s,[key]:value};
+    if(['leads','connect','book','show'].includes(key))next.currentAppointments=projectedAttendance(next);
+    return next;
+  }
   function callWork(s,leads,bookingRate=s.book){
     const attempts=leads*s.attemptsPerLead;
     const connected=leads*s.connect/100,booked=connected*bookingRate/100;
@@ -93,6 +102,6 @@
     return {today,funnel,capacity,plan,target,netValue,current,hired,lion,base,
       savings:comparable?base.cash-lion.cash:null,ownerTime:comparable?base.ownerHours:null};
   }
-  root.LionModel={defaults,calculate,callWork};
-  if(typeof module!=='undefined'&&module.exports)module.exports={defaults,calculate,callWork};
+  root.LionModel={defaults,calculate,callWork,projectedAttendance,updateInput};
+  if(typeof module!=='undefined'&&module.exports)module.exports={defaults,calculate,callWork,projectedAttendance,updateInput};
 })(typeof globalThis!=='undefined'?globalThis:this);
