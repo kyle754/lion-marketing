@@ -126,7 +126,7 @@ test('cheap leads stay cheap while operating work and ramp costs remain visible'
  assert.ok(r.current.cash<r.lion.cash);near(r.plan.returnMultiple,3);
  const copy=R.operations(s,r).map(row=>row.join(' ')).join(' ');
  assert.match(copy,/additional dial attempts/);assert.match(copy,/sick-day coverage, turnover, and retraining/);assert.match(copy,/only when the prospect attends/);
- const html=R.html(s,r);assert.match(html,/Total cash - first month/);assert.match(html,/post-ramp|Post-ramp/);assert.match(html,/3x projected revenue/);
+ const html=R.html(s,r);assert.match(html,/Total cash - first month/);assert.match(html,/after ramp|post-ramp|Post-ramp/);assert.match(html,/3x projected revenue/);
  assert.ok(r.hired.firstMonth>r.hired.cash+r.hired.startup);
 });
 
@@ -182,6 +182,17 @@ test('projected revenue is before appointment fees and reflects the cancellation
  const s={...defaults,close:25,commission:3000,reserve:20},r=calculate(s);
  near(r.plan.saleValue,12000);near(r.plan.investment,5000);near(r.plan.contribution,7000);near(r.plan.returnMultiple,2.4);
  const html=R.html(s,r);
- assert.match(html,/\$12,000 projected monthly revenue/);
+ assert.match(html,/PROJECTED MONTHLY REVENUE<\/p><h1>\$12,000<\/h1>/);
+ assert.match(html,/140% projected ROI/);
  assert.doesNotMatch(html,/potential contribution/i);
+});
+
+
+test('report ROI measures the return after appointment fees, with negative and zero-investment cases',()=>{
+ near(R.roiPercent(calculate({...defaults,close:25,commission:3000,price:250})),200);
+ near(R.roiPercent(calculate({...defaults,close:0,price:250})),-100);
+ assert.equal(R.roiPercent(calculate({...defaults,price:0})),null);
+ const r=calculate(defaults),html=R.html(defaults,r);
+ assert.ok(html.indexOf('PROJECTED MONTHLY REVENUE')<html.indexOf('Same shows. Less to manage.'));
+ assert.equal(R.executiveRows(r).length,4);
 });

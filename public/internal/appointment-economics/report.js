@@ -5,6 +5,28 @@
   const date=()=>new Intl.DateTimeFormat('en-US',{timeZone:'America/Los_Angeles',dateStyle:'long'}).format(new Date());
   const formatDate=v=>/^\d{4}-\d{2}-\d{2}$/.test(v)&&Number.isFinite(Date.parse(v+'T12:00:00Z'))?new Intl.DateTimeFormat('en-US',{dateStyle:'medium',timeZone:'UTC'}).format(new Date(v+'T12:00:00Z')):'To confirm';
   const v=(m,key,f=money)=>m.available?f(m[key]):'Unavailable';
+  const reportScript=typeof document!=='undefined'?document.currentScript?.src:null;
+  let fontAssetsPromise;
+  function loadFonts(){
+    if(!fontAssetsPromise){
+      fontAssetsPromise=(async()=>{
+        if(!reportScript)throw new Error('PDF font assets must be supplied outside the browser.');
+        const asset=path=>new URL(path,reportScript).href;
+        const kit=window.fontkit?Promise.resolve(window.fontkit):new Promise((resolve,reject)=>{
+          const script=document.createElement('script');script.src=asset('vendor/fontkit.umd.min.js');
+          script.onload=()=>window.fontkit?resolve(window.fontkit):reject(new Error('PDF font library unavailable.'));
+          script.onerror=()=>{script.remove();reject(new Error('PDF font library could not load.'));};
+          document.head.appendChild(script);
+        });
+        const bytes=async path=>{const response=await fetch(asset(path));if(!response.ok)throw new Error('PDF typeface unavailable.');return new Uint8Array(await response.arrayBuffer());};
+        const [fontkit,sans,bold,serif]=await Promise.all([kit,bytes('fonts/Lato-Regular.ttf'),bytes('fonts/Lato-Bold.ttf'),bytes('fonts/LibreBaskerville-Regular.ttf')]);
+        return {fontkit,sans,bold,serif};
+      })().catch(error=>{fontAssetsPromise=null;throw error;});
+    }
+    return fontAssetsPromise;
+  }
+  const roiPercent=r=>r.plan.returnMultiple===null?null:(r.plan.returnMultiple-1)*100;
+  const executiveRows=r=>{const all=rows(r);return [all[0],all[1],all[3],all[4]];};
   function rows(r){
     return [
       ['Total cash - first month',v(r.current,'firstMonth'),r.hired.rampAvailable?money(r.hired.firstMonth):'Unavailable',money(r.lion.firstMonth)],
@@ -52,63 +74,81 @@
     return num(r.plan.breakEvenSales,0)+' '+(r.plan.breakEvenSales===1?'sale':'sales')+' to cover '+money(r.plan.investment)+' in appointment spending. Modeled sales: '+num(r.plan.sales)+'.';
   }
   function html(s,r){
-    const table=rows(r).map(row=>'<tr>'+row.map((x,i)=>'<'+(i?'td':'th')+'>'+esc(x)+'</'+(i?'td':'th')+'>').join('')+'</tr>').join('');
-    return '<div class="decision-report"><div class="brand">LION MARKETING</div><h1>Fill your calendar. Focus on sales.</h1><p>Prepared for '+esc(s.prospect||'Prospective partner')+' / '+esc(s.product)+' / '+esc(s.market||'Market to confirm')+'</p><h2>Your opportunity</h2><p>'+num(r.today.held)+' attended appointments / '+num(s.capacity)+' monthly capacity / '+num(r.capacity.gap)+' empty slots.</p><h2>Your appointment plan</h2><p>'+num(r.target)+' extra shows / '+money(r.plan.investment)+' appointment spend / '+money(r.plan.saleValue)+' projected monthly revenue / '+num(r.plan.returnMultiple,2)+'x projected revenue to spend.</p><p>'+esc(valueCase(s,r))+'</p><p>'+coverage(s,r)+'</p><h2>What this growth requires</h2><table><thead><tr><th></th><th>Your process</th><th>Hired setter</th><th>Lion</th></tr></thead><tbody>'+table+'</tbody></table>'+operations(s,r).map(([a,b])=>'<p><strong>'+esc(a)+':</strong> '+esc(b)+'</p>').join('')+'<p>'+esc(decision(s,r))+'</p><h2>Next step</h2><p>'+esc(next(s,r))+'</p><p>Assumptions: '+num(s.close)+'% close / '+money(r.netValue)+' revenue per sale, after cancellation reserve / '+num(s.penalty)+'% booking reduction during '+num(s.rampWeeks)+' weeks of training ramp. Post-ramp booking matches your process. Revenue is before appointment and other business costs. Cash totals include new leads, wages, tools, recruiting, and ramp where applicable. First-month hours include hiring, training, and monthly setting/supervision; everyone still attends appointments and closes sales. Hours have no dollar valuation.</p></div>';
+    const p=r.plan,roi=roiPercent(r);
+    const table=executiveRows(r).map(row=>'<tr>'+row.map((x,i)=>'<'+(i?'td':'th')+'>'+esc(x)+'</'+(i?'td':'th')+'>').join('')+'</tr>').join('');
+    return '<div class="decision-report"><div class="brand">LION MARKETING</div><p>Prepared for '+esc(s.prospect||'Prospective partner')+' / '+esc(s.product)+' / '+esc(s.market||'Market to confirm')+'</p><h2>Your monthly appointment plan</h2><section class="report-revenue"><p>PROJECTED MONTHLY REVENUE</p><h1>'+money(p.saleValue)+'</h1><p>From the additional Lion appointments. Before appointment and other business costs.</p><div class="report-plan"><span>'+num(r.target)+' extra shows</span><span>'+money(p.investment)+' Lion investment</span><span>'+(roi===null?'Unavailable':num(roi,0)+'%')+' projected ROI</span></div><p>'+num(p.returnMultiple,2)+'x projected revenue to spend.</p></section><p><strong>'+money(p.contribution)+'/month after Lion fees</strong>, before other business costs.</p><p>'+num(r.today.held)+' current + '+num(r.target)+' Lion shows = '+num(p.totalShows)+' of '+num(s.capacity)+' monthly slots filled.</p><h2>Same shows. Less to manage.</h2><table><thead><tr><th></th><th>More leads</th><th>Hire a setter</th><th>Lion</th></tr></thead><tbody>'+table+'</tbody></table><p>First-month totals include setup and ramp. Hours include hiring/training in month one. Everyone still attends appointments and closes sales.</p><p><strong>No setting team to manage. Pay only for shows.</strong></p><h2>Next step</h2><p>'+esc(next(s,r))+'</p><p>Projection: '+num(s.close)+'% close / '+money(r.netValue)+' revenue per sale after reserve. ROI = (revenue - Lion fees) / Lion fees, before other business costs. Setter: '+money(s.setterMonthly)+'/month; '+num(s.penalty)+'% lower booking during '+num(s.rampWeeks)+' weeks of ramp. Projections are not guaranteed; see the calculator for full assumptions.</p></div>';
   }
-  async function build(s,r,lib){
-    const {PDFDocument,StandardFonts,rgb}=lib,pdf=await PDFDocument.create(),page=pdf.addPage([612,792]);
-    const sans=await pdf.embedFont(StandardFonts.Helvetica),bold=await pdf.embedFont(StandardFonts.HelveticaBold),serif=await pdf.embedFont(StandardFonts.TimesRoman);
-    const ink=rgb(.047,.106,.165),gold=rgb(.714,.631,.42),muted=rgb(.42,.45,.46),paper=rgb(.969,.957,.925),white=rgb(1,1,1),lineColor=rgb(.86,.84,.8);
+  async function build(s,r,lib,assets){
+    const {PDFDocument,rgb}=lib,pdf=await PDFDocument.create(),page=pdf.addPage([612,792]);
+    const fonts=assets||await loadFonts();pdf.registerFontkit(fonts.fontkit);
+    const [sans,bold,serif]=await Promise.all([pdf.embedFont(fonts.sans,{subset:true}),pdf.embedFont(fonts.bold,{subset:true}),pdf.embedFont(fonts.serif,{subset:true})]);
+    const ink=rgb(.047,.106,.165),gold=rgb(.714,.631,.42),muted=rgb(.37,.41,.44),paper=rgb(1,.992,.973),white=rgb(1,1,1),cream=rgb(.955,.937,.889),soft=rgb(.75,.79,.81),rule=rgb(.86,.84,.8);
     const safe=v=>String(v??'').replace(/[\r\n\t]/g,' ').replace(/[\u2010-\u2015]/g,'-').replace(/[\u2018\u2019]/g,"'").replace(/[\u201c\u201d]/g,'"').replace(/\u2026/g,'...').replace(/[^\x20-\x7e\u00a0-\u00ff]/g,'?');
-    function text(v,x,y,size=10,font=sans,color=ink,max=540){
-      let value=safe(v),use=size;
-      while(font.widthOfTextAtSize(value,use)>max&&use>8)use-=.25;
+    function text(value,x,y,size=11,font=sans,color=ink,max=540){
+      value=safe(value);let use=size;
+      while(font.widthOfTextAtSize(value,use)>max&&use>9)use-=.25;
       while(font.widthOfTextAtSize(value,use)>max&&value.length>3)value=value.slice(0,-4)+'...';
       page.drawText(value,{x,y,size:use,font,color});
     }
-    function paragraph(v,x,y,width=540,size=9,color=muted,maxLines=2,lineHeight=12){
+    function paragraph(value,x,y,width=540,size=10,color=muted,maxLines=2,lineHeight=13){
       const lines=[];let pending='';
-      for(const word of safe(v).split(/\s+/)){
-        const proposal=pending?pending+' '+word:word;
-        if(sans.widthOfTextAtSize(proposal,size)>width&&pending){lines.push(pending);pending=word;}else pending=proposal;
+      for(const word of safe(value).split(/\s+/)){
+        const proposed=pending?pending+' '+word:word;
+        if(sans.widthOfTextAtSize(proposed,size)>width&&pending){lines.push(pending);pending=word;}else pending=proposed;
       }
       if(pending)lines.push(pending);
       const shown=lines.slice(0,maxLines);
       if(lines.length>maxLines){let last=shown[maxLines-1];while(sans.widthOfTextAtSize(last+'...',size)>width&&last.length)last=last.slice(0,-1);shown[maxLines-1]=last+'...';}
       shown.forEach((v,i)=>text(v,x,y-i*lineHeight,size,sans,color,width));
     }
-    const line=y=>page.drawLine({start:{x:36,y},end:{x:576,y},thickness:.7,color:lineColor});
-    page.drawRectangle({x:36,y:737,width:32,height:32,borderWidth:.8,borderColor:gold});text('LM',42,747,15,serif,ink,22);text('LION MARKETING',80,748,10,bold);text(date(),430,748,8,sans,muted,146);line(726);
-    text('YOUR APPOINTMENT OPPORTUNITY',36,705,8,bold,gold);
-    text('Fill your calendar. Focus on sales.',36,677,28,serif);
-    text((s.prospect||'Prospective partner')+' / '+s.product+' / '+(s.market||'Market to confirm'),36,658,10,sans,muted);
-    text("TODAY'S BASELINE / MONTHLY",36,634,8,bold,muted);
-    const stats=[['CURRENT SHOWS',num(r.today.held)],['MONTHLY CASH',r.today.available?money(r.today.cash):'Incomplete'],['CASH / SHOW',money(r.today.costHeld,2)],['YOUR SETTING TIME',num(r.today.ownerHours)+' hrs']];
-    stats.forEach(([label,value],i)=>{const x=36+i*139;text(label,x,615,7.5,bold,muted,125);text(value,x,591,22,serif,ink,125);});
-    text(num(r.capacity.gap)+' empty slots / '+num(s.capacity)+' monthly capacity. Proposed plan: '+num(r.plan.totalShows)+' total shows, with '+num(r.plan.remaining)+' slots remaining.',36,571,9,sans,muted);
-    page.drawRectangle({x:36,y:452,width:540,height:103,color:ink});
-    text('PROPOSED MONTHLY PLAN / ADD TO YOUR EXISTING PIPELINE',52,537,8,bold,white,508);
-    const planStats=[['EXTRA SHOWS',num(r.target)],['LION INVESTMENT',money(r.plan.investment)],['PROJECTED REVENUE',money(r.plan.saleValue)],['REVENUE / APPT SPEND',r.plan.returnMultiple===null?'Unavailable':num(r.plan.returnMultiple,2)+'x']];
-    planStats.forEach(([label,value],i)=>{const x=52+i*130;text(label,x,516,6.9,bold,white,120);text(value,x,492,23,serif,rgb(.85,.79,.59),120);});
-    text(num(r.target)+' shows x '+num(s.close)+'% close x '+money(r.netValue)+' revenue/sale = '+money(r.plan.saleValue)+' projected revenue.',52,474,9,sans,white,508);
-    text(money(r.plan.saleValue)+' revenue - '+money(r.plan.investment)+' Lion fees = '+money(r.plan.contribution)+' before other business costs.',52,461,8,sans,white,508);
-    paragraph(coverage(s,r),36,434,540,9,ink,1);
-    text('What does adding '+num(r.target)+' shows require?',36,408,20,serif);
-    text("Same extra shows. First month includes setup and ramp; ongoing monthly costs apply after ramp.",36,390,8.5,sans,muted);
+    const line=(y,x=36,width=540,color=rule)=>page.drawLine({start:{x,y},end:{x:x+width,y},thickness:.7,color});
+    page.drawRectangle({x:0,y:0,width:612,height:792,color:paper});
+    page.drawRectangle({x:36,y:738,width:30,height:30,borderWidth:.8,borderColor:gold});
+    text('LM',41,747,14,serif,ink,22);text('LION MARKETING',78,749,10.5,bold);
+    text(date(),430,749,9.5,sans,muted,146);
+    text((s.prospect||'Prospective partner')+' / '+s.product+' / '+(s.market||'Market to confirm'),36,719,11,sans,muted);
+    text('Your monthly appointment plan',36,691,22,serif);
+
+    const p=r.plan,roi=roiPercent(r);
+    page.drawRectangle({x:42,y:442,width:540,height:227,color:gold});
+    page.drawRectangle({x:36,y:448,width:540,height:227,color:ink});
+    text('PROJECTED MONTHLY REVENUE',54,647,10,bold,gold,504);
+    text(money(p.saleValue),52,586,54,serif,white,504);
+    text(num(p.sales)+' projected sales x '+money(r.netValue)+' revenue per sale',54,565,12,sans,white,504);
+    text('From the additional Lion appointments. Before appointment and business costs.',54,547,10.5,sans,soft,504);
+    line(531,54,504,rgb(.25,.31,.35));
+    const stats=[['ADDITIONAL SHOWS',num(r.target),'Attended appointments / month'],['LION INVESTMENT',money(p.investment),money(s.price)+' / attended show'],['PROJECTED ROI',roi===null?'Unavailable':num(roi,0)+'%',p.returnMultiple===null?'Set an appointment price':num(p.returnMultiple,2)+'x revenue / Lion fees']];
+    stats.forEach(([label,value,detail],i)=>{const x=54+i*171;text(label,x,509,9,bold,soft,159);text(value,x,475,26,serif,gold,159);text(detail,x,457,9.5,sans,soft,159);});
+
+    page.drawRectangle({x:36,y:388,width:540,height:44,color:cream});
+    text('Revenue after Lion appointment fees',50,413,11,bold,ink,270);
+    text('Before other business costs',50,397,10,sans,muted,270);
+    text(money(p.contribution)+'/mo',328,402,24,serif,ink,232);
+    text(num(r.today.held)+' current + '+num(r.target)+' Lion shows = '+num(p.totalShows)+' of '+num(s.capacity)+' monthly slots filled.',36,365,11,sans,muted);
+
+    text('Same shows. Less to manage.',36,337,21,serif);
+    text('Compare the same '+num(r.target)+' additional attended appointments each month.',36,319,10.5,sans,muted);
     const colX=[36,259,367,475],colW=[223,108,108,101];
-    page.drawRectangle({x:36,y:354,width:540,height:25,color:paper});
-    ['','MORE LEADS','HIRE A SETTER','LION / SHOW'].forEach((v,i)=>text(v,colX[i]+(i?7:0),363,8,bold,muted,colW[i]-12));
-    rows(r).forEach((row,i)=>{const bottom=330-i*23;if(i===0)page.drawRectangle({x:36,y:bottom-1,width:540,height:23,color:paper});row.forEach((v,j)=>text(v,colX[j]+(j?7:0),bottom+7,9,j===3||i===0?bold:sans,ink,colW[j]-12));page.drawLine({start:{x:36,y:bottom},end:{x:576,y:bottom},thickness:.4,color:lineColor});});
-    paragraph('Cash: new leads, wages, tools, recruiting and ramp costs. Your hours: setting or supervision + hiring/training in month one. Everyone still attends appointments and closes sales.',36,223,540,8,muted,2,10);
-    operations(s,r).forEach(([a,b],i)=>paragraph(a+': '+b,36,193-i*30,540,8,i===2?ink:muted,2,10));
-    text('KEEP WHAT WORKS. ADD SHOWS WITHOUT ADDING A SETTING TEAM.',36,112,8,bold,gold);
-    paragraph(s.nextStep||'Next step: confirm the product, market, appointment volume, and final quote.',36,97,540,9,ink,2,11);
-    text('Next step: '+formatDate(s.nextDate)+' / Proposed launch: '+formatDate(s.launchDate),36,72,8,sans,muted);
-    line(66);
-    paragraph('Assumptions: '+num(s.close)+'% close; '+money(r.netValue)+' revenue/sale after reserve; '+money(s.price)+'/show. Setter: '+money(s.setterMonthly)+'/month; '+num(r.hired.setters,0)+' needed; '+num(s.penalty)+'% booking reduction during '+num(s.rampWeeks)+' weeks of ramp. First month uses 30 days; post-ramp performance matches your process.',36,54,540,7.5,muted,2,9);
-    paragraph('Time: '+num(s.dialSeconds)+' sec/dial x '+num(s.attemptsPerLead)+' attempts/lead; '+num(s.connectMinutes)+' min/unbooked connect; '+num(s.bookedMinutes)+' min/booked call, including the connection. Hours have no dollar value. Revenue projections are estimates before appointment and other business costs.',36,28,540,7.5,muted,2,9);
-    pdf.setTitle('Lion Marketing - Proposed Appointment Plan');pdf.setAuthor('Lion Marketing');return pdf.save();
+    page.drawRectangle({x:36,y:286,width:540,height:23,color:cream});
+    ['YOUR COSTS & TIME','MORE LEADS','HIRE A SETTER','LION'].forEach((v,i)=>text(v,colX[i]+8,295,9,bold,muted,colW[i]-16));
+    const data=executiveRows(r),labels=['Cash - first month','Cash / month after ramp','Your hours - first month','Your hours / month'];
+    data.forEach((row,i)=>{
+      const bottom=258-i*28;
+      page.drawRectangle({x:475,y:bottom,width:101,height:28,color:ink});
+      row.forEach((value,j)=>text(j?value:labels[i],colX[j]+8,bottom+9,11,j?bold:sans,j===3?white:ink,colW[j]-16));
+      line(bottom);
+    });
+    paragraph('First month includes setup and ramp; monthly cash is after ramp. Your hours include hiring/training in month one. Everyone still attends appointments and closes sales.',36,159,540,10,muted,2,12);
+    text('No setting team to manage. Pay only for shows. You attend and close.',36,126,11,bold,ink);
+    text('NEXT STEP',36,107,9,bold,gold);
+    paragraph(s.nextStep||'Confirm '+num(r.target)+' attended appointments/month at '+money(s.price)+' per show.',36,93,540,10,ink,2,12);
+    if(s.nextDate||s.launchDate)text((s.nextDate?'Next step: '+formatDate(s.nextDate):'')+(s.nextDate&&s.launchDate?' / ':'')+(s.launchDate?'Launch: '+formatDate(s.launchDate):''),36,69,9,sans,muted);
+    line(63);
+    text('Projection: '+num(s.close)+'% close; '+money(r.netValue)+' revenue/sale after reserve. ROI = (revenue - Lion fees) / Lion fees.',36,50,9,sans,muted);
+    text('Setter: '+money(s.setterMonthly)+'/month; '+num(s.penalty)+'% lower booking during '+num(s.rampWeeks)+' weeks of ramp. Setup/ramp included in first month.',36,38,9,sans,muted);
+    text('Revenue and ROI are projected before other business costs, not guaranteed. See the calculator for full assumptions.',36,26,9,sans,muted);
+    pdf.setTitle('Lion Marketing - Monthly Appointment Plan');pdf.setAuthor('Lion Marketing');return pdf.save();
   }
-  root.LionReport={html,build,rows,decision,benefits,valueCase,costDifference,operations,formatDate,next,coverage,money,num,esc};
+  root.LionReport={html,build,loadFonts,roiPercent,executiveRows,rows,decision,benefits,valueCase,costDifference,operations,formatDate,next,coverage,money,num,esc};
   if(typeof module!=='undefined'&&module.exports)module.exports=root.LionReport;
 })(typeof globalThis!=='undefined'?globalThis:this);
