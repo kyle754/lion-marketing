@@ -19,3 +19,6 @@
 @media(max-width:1100px){.operating-tradeoffs{grid-template-columns:1fr}.growth-payoff{font-size:19px}}
 @media(max-width:900px){.operating-tradeoffs{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:600px){.operating-tradeoffs{grid-template-columns:1fr}.volume-choice{flex-direction:column;align-items:flex-start}.growth-payoff{font-size:19px}}
+
+/* Keep the revenue and decision totals prominent within Lion's palette. */
+.hero-result.navy .projected-revenue{border-left:2px solid var(--gold);padding-left:13px}.hero-result.navy .projected-revenue .eyebrow{color:#d8c993}.hero-result.navy .projected-revenue strong{color:var(--paper)}.comparison-scope{font-size:12px;line-height:1.6;margin:0 0 16px}.row-explanation{display:block;font-size:9px;line-height:1.5;font-weight:400;color:var(--muted);margin-top:5px}.comparison-panel .total-row td{font-size:14px}.comparison-panel .total-row th{font-size:11px;font-weight:600}.comparison-panel .total-row:nth-child(4){border-top:3px solid #d7cba9}

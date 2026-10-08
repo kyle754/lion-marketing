@@ -88,7 +88,7 @@ test('salary is full-month and staffing scales from calculated call workload',()
  const s={...defaults,setterHours:calculate(defaults).hired.dialing,capacity:80,proposed:20};
  const one=calculate(s);assert.equal(one.hired.setters,1);near(one.hired.labor,1200);
  const two=calculate({...s,proposed:40});assert.equal(two.hired.setters,2);near(two.hired.labor,2400);near(two.hired.tools,300);
- near(two.hired.ownerHours,16);near(two.hired.startup,600);near(two.hired.hiringHours,32);
+ near(two.hired.ownerHours,44);near(two.hired.startup,600);near(two.hired.hiringHours,32);
  assert.equal(calculate({...defaults,setterHours:0}).hired.available,false);
 });
 test('no growth plan creates no incremental hire or Lion expense',()=>{
@@ -126,7 +126,7 @@ test('cheap leads stay cheap while operating work and ramp costs remain visible'
  assert.ok(r.current.cash<r.lion.cash);near(r.plan.returnMultiple,3);
  const copy=R.operations(s,r).map(row=>row.join(' ')).join(' ');
  assert.match(copy,/additional dial attempts/);assert.match(copy,/sick-day coverage, turnover, and retraining/);assert.match(copy,/only when the prospect attends/);
- const html=R.html(s,r);assert.match(html,/First-month cash/);assert.match(html,/post-ramp|Post-ramp/);assert.match(html,/3x projected sale value/);
+ const html=R.html(s,r);assert.match(html,/Total cash - first month/);assert.match(html,/post-ramp|Post-ramp/);assert.match(html,/3x projected revenue/);
  assert.ok(r.hired.firstMonth>r.hired.cash+r.hired.startup);
 });
 
@@ -137,7 +137,7 @@ test('initial staffing covers ramp workload and training salary is counted once'
  assert.ok(r.hired.dialing<available);assert.ok(r.hired.rampCallTime.hours>available);
  assert.equal(r.hired.setters,2);near(r.hired.labor,2400);
  near(r.hired.firstMonth,r.hired.leadCost+2400+r.hired.tools+r.hired.startup+r.hired.rampExtraCash);
- near(r.hired.ownerHours,16);near(r.hired.hiringHours,32);
+ near(r.hired.ownerHours,44);near(r.hired.hiringHours,32);
 });
 
 test('attendance updates from leads and each funnel rate, and updates the capacity recommendation',()=>{
@@ -165,4 +165,23 @@ test('reset defaults use three dial attempts and matching attendance',()=>{
  near(d.attemptsPerLead,3);near(d.currentAppointments,42.9);
  near(r.today.callTime.attempts,600);near(r.today.callTime.dialMinutes,600);
  near(r.today.callTime.bookingTalkMinutes,660);near(r.today.ownerHours,1395/60);
+});
+
+
+test('default daily supervision and first-month hours include hiring/training only once',()=>{
+ const d=context.LionModel.defaults,r=calculate(d);
+ near(d.manageHours,22);near(r.hired.ownerHours,22);near(r.hired.hiringHours,16);
+ near(r.hired.firstMonthOwnerHours,38);
+ near(r.current.firstMonthOwnerHours,r.current.ownerHours);
+ near(r.lion.firstMonthOwnerHours,0);near(r.lion.ownerHours,0);
+ const changed=calculate({...d,manageHours:30});near(changed.hired.firstMonthOwnerHours,46);
+ near(changed.hired.cash,r.hired.cash);near(changed.hired.firstMonth,r.hired.firstMonth);
+ const blocked=calculate({...d,penalty:100,rampWeeks:30/7});assert.equal(blocked.hired.firstMonthOwnerHours,null);
+});
+test('projected revenue is before appointment fees and reflects the cancellation reserve',()=>{
+ const s={...defaults,close:25,commission:3000,reserve:20},r=calculate(s);
+ near(r.plan.saleValue,12000);near(r.plan.investment,5000);near(r.plan.contribution,7000);near(r.plan.returnMultiple,2.4);
+ const html=R.html(s,r);
+ assert.match(html,/\$12,000 projected monthly revenue/);
+ assert.doesNotMatch(html,/potential contribution/i);
 });

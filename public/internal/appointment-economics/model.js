@@ -6,7 +6,7 @@
     connect:60,book:55,show:65,close:20,dialSeconds:60,connectMinutes:2.5,bookedMinutes:10,attemptsPerLead:3,staffHourly:0,tools:150,extraTools:0,
     commission:2500,reserve:0,proposed:20,volumeMode:'capacity',compare:'current',price:250,
     setterMonthly:1200,setterHours:160,penalty:15,hireFee:300,recruitHours:6,trainerHours:10,
-    manageHours:8,hireTools:150,hireExtra:0,rampWeeks:4
+    manageHours:22,hireTools:150,hireExtra:0,rampWeeks:4
   };
   defaults.currentAppointments=projectedAttendance(defaults);
   const divide=(a,b)=>b>0?a/b:null;
@@ -78,12 +78,14 @@
       labor:0,tools:0,leadCost:0,startup:0,hiringHours:0,recruitHours:0,trainingHours:0};
     for(const m of [current,hired,lion]){
       m.total=m.cash;m.ongoing=m.cash;m.firstMonth=m.cash+m.startup;
+      m.firstMonthOwnerHours=m.ownerHours+m.hiringHours;
       m.operationsHours=m.dialing+m.ownerHours*(m===hired?1:0);
       m.sales=target*s.close/100;m.costHeld=m.available?divide(m.cash,target):null;
       m.costSale=m.available?divide(m.cash,m.sales):null;
       m.value=m.sales*netValue;m.contribution=m.available?m.value-m.cash:null;
     }
     hired.firstMonth=hired.rampAvailable?hired.cash+hired.startup+hired.rampExtraCash:null;
+    if(!hired.rampAvailable)hired.firstMonthOwnerHours=null;
     hired.firstMonthContribution=hired.firstMonth===null?null:hired.value-hired.firstMonth;
     const base=s.compare==='hired'?hired:current;
     const comparable=base.available&&target>0;

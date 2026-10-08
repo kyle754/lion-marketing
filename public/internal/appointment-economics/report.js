@@ -7,16 +7,16 @@
   const v=(m,key,f=money)=>m.available?f(m[key]):'Unavailable';
   function rows(r){
     return [
-      ['Monthly cash / after setter ramp',v(r.current,'cash'),v(r.hired,'cash'),money(r.lion.cash)],
-      ['Cash cost / attended appointment',v(r.current,'costHeld',n=>money(n,2)),v(r.hired,'costHeld',n=>money(n,2)),money(r.lion.costHeld,2)],
-      ['First-month cash / setup & ramp included',v(r.current,'firstMonth'),r.hired.rampAvailable?money(r.hired.firstMonth):'Unavailable',money(r.lion.firstMonth)],
-      ['Your setting / supervision hours monthly',v(r.current,'ownerHours',n=>num(n)+' hrs'),v(r.hired,'ownerHours',n=>num(n)+' hrs'),'Handled by Lion'],
-      ['Your hiring / training hours once','0 hrs',v(r.hired,'hiringHours',n=>num(n)+' hrs'),'Handled by Lion']
+      ['Total cash - first month',v(r.current,'firstMonth'),r.hired.rampAvailable?money(r.hired.firstMonth):'Unavailable',money(r.lion.firstMonth)],
+      ['Total cash / month after ramp',v(r.current,'cash'),v(r.hired,'cash'),money(r.lion.cash)],
+      ['Cash / attended appointment',v(r.current,'costHeld',n=>money(n,2)),v(r.hired,'costHeld',n=>money(n,2)),money(r.lion.costHeld,2)],
+      ['Your hours - first month',v(r.current,'firstMonthOwnerHours',n=>num(n)+' hrs'),r.hired.rampAvailable?num(r.hired.firstMonthOwnerHours)+' hrs':'Unavailable','0 hrs'],
+      ['Your hours / month after ramp',v(r.current,'ownerHours',n=>num(n)+' hrs'),v(r.hired,'ownerHours',n=>num(n)+' hrs'),'0 hrs']
     ];
   }
   function valueCase(s,r){
     if(!r.target)return 'Confirm unused attended appointment capacity to build a growth plan.';
-    return 'At your entered close rate, each '+money(s.price)+' attended appointment projects '+money(r.plan.valuePerShow)+' in sale value and '+money(r.plan.contributionPerShow)+' after the appointment cost, before other business costs.';
+    return 'At your entered close rate, each '+money(s.price)+' attended appointment projects '+money(r.plan.valuePerShow)+' in revenue. Revenue less the appointment fee: '+money(r.plan.contributionPerShow)+' per show, before other business costs.';
   }
   function costDifference(s,r){
     if(r.savings===null)return 'Confirm missing comparison inputs to compare cash costs.';
@@ -26,13 +26,13 @@
     if(r.target===0)return 'There is no unused appointment capacity in this plan. Confirm capacity or the proposed volume before moving forward.';
     if(r.plan.contribution<=0)return valueCase(s,r)+' Review the appointment price, close rate, and sale value before proceeding.';
     const burden=s.compare==='hired'&&r.hired.available?'Skip '+num(r.hired.hiringHours)+' hiring/training hours and '+num(r.hired.ownerHours)+' monthly supervision hours, with no setter team to run.':r.current.available?'Lion handles the '+num(r.plan.selfDials,0)+' added dial attempts and '+num(r.plan.selfHours)+' monthly setting hours this volume would require.':'Lion handles lead sourcing, follow-up, and appointment setting for the added volume.';
-    return 'Your plan adds '+num(r.target)+' attended appointments and '+money(r.plan.contribution)+' in potential contribution after appointment spending, before other business costs. '+burden+' Keep the lead sources that already work for you.';
+    return 'Your plan adds '+num(r.target)+' attended appointments and '+money(r.plan.saleValue)+' in projected monthly revenue. After '+money(r.plan.investment)+' in Lion appointment fees, '+money(r.plan.contribution)+' remains before other business costs. '+costDifference(s,r)+' '+burden+' Keep the lead sources that already work for you.';
   }
   function operations(s,r){
     const team=s.operator==='team';
     return [
       ['Scale your current process',r.current.available?num(r.plan.selfDials,0)+' additional dial attempts and '+num(r.plan.selfHours)+' setting hours every month. More shows also mean more phone work'+(team?' for your team.':'.'):'Enter viable funnel rates to calculate the added phone workload.'],
-      ['Build and manage a setter team',r.hired.available?num(r.hired.hiringHours)+' hiring/training hours once + '+num(r.hired.ownerHours)+' supervision hours monthly. Plan for '+num(s.rampWeeks)+' weeks of training ramp, plus sick-day coverage, turnover, and retraining.':'Recruit, train, supervise, and arrange coverage for absences and turnover.'],
+      ['Build and manage a setter team',r.hired.available?num(r.hired.hiringHours)+' hiring/training hours once + '+num(r.hired.ownerHours)+' supervision hours monthly for KPI checks, coaching, and questions. Plan for '+num(s.rampWeeks)+' weeks of training ramp, plus sick-day coverage, turnover, and retraining.':'Recruit, train, supervise, and arrange coverage for absences and turnover.'],
       ['Lion handles appointment setting','An established team handles lead sourcing and follow-up from the agreed launch. You attend appointments and close sales. Pay '+money(s.price)+' only when the prospect attends.']
     ];
   }
@@ -48,12 +48,12 @@
   }
   function coverage(s,r){
     if(!r.target)return 'Choose a positive appointment plan to calculate investment coverage.';
-    if(r.plan.breakEvenSales===null)return 'Appointment spending is not covered at the entered net sale value.';
+    if(r.plan.breakEvenSales===null)return 'Appointment spending is not covered at the entered revenue per sale.';
     return num(r.plan.breakEvenSales,0)+' '+(r.plan.breakEvenSales===1?'sale':'sales')+' to cover '+money(r.plan.investment)+' in appointment spending. Modeled sales: '+num(r.plan.sales)+'.';
   }
   function html(s,r){
     const table=rows(r).map(row=>'<tr>'+row.map((x,i)=>'<'+(i?'td':'th')+'>'+esc(x)+'</'+(i?'td':'th')+'>').join('')+'</tr>').join('');
-    return '<div class="decision-report"><div class="brand">LION MARKETING</div><h1>Fill your calendar. Focus on sales.</h1><p>Prepared for '+esc(s.prospect||'Prospective partner')+' / '+esc(s.product)+' / '+esc(s.market||'Market to confirm')+'</p><h2>Your opportunity</h2><p>'+num(r.today.held)+' attended appointments / '+num(s.capacity)+' monthly capacity / '+num(r.capacity.gap)+' empty slots.</p><h2>Your appointment plan</h2><p>'+num(r.target)+' extra shows / '+money(r.plan.investment)+' appointment spend / '+money(r.plan.contribution)+' potential contribution / '+num(r.plan.returnMultiple,2)+'x projected sale value to spend.</p><p>'+esc(valueCase(s,r))+'</p><p>'+coverage(s,r)+'</p><h2>What this growth requires</h2><table><thead><tr><th></th><th>Your process</th><th>Hired setter</th><th>Lion</th></tr></thead><tbody>'+table+'</tbody></table>'+operations(s,r).map(([a,b])=>'<p><strong>'+esc(a)+':</strong> '+esc(b)+'</p>').join('')+'<p>'+esc(decision(s,r))+'</p><h2>Next step</h2><p>'+esc(next(s,r))+'</p><p>Assumptions: '+num(s.close)+'% close / '+money(r.netValue)+' net value per sale / '+num(s.penalty)+'% booking reduction during '+num(s.rampWeeks)+' weeks of training ramp. Post-ramp booking matches your process. Returns are estimates before other business costs. Hours have no dollar valuation.</p></div>';
+    return '<div class="decision-report"><div class="brand">LION MARKETING</div><h1>Fill your calendar. Focus on sales.</h1><p>Prepared for '+esc(s.prospect||'Prospective partner')+' / '+esc(s.product)+' / '+esc(s.market||'Market to confirm')+'</p><h2>Your opportunity</h2><p>'+num(r.today.held)+' attended appointments / '+num(s.capacity)+' monthly capacity / '+num(r.capacity.gap)+' empty slots.</p><h2>Your appointment plan</h2><p>'+num(r.target)+' extra shows / '+money(r.plan.investment)+' appointment spend / '+money(r.plan.saleValue)+' projected monthly revenue / '+num(r.plan.returnMultiple,2)+'x projected revenue to spend.</p><p>'+esc(valueCase(s,r))+'</p><p>'+coverage(s,r)+'</p><h2>What this growth requires</h2><table><thead><tr><th></th><th>Your process</th><th>Hired setter</th><th>Lion</th></tr></thead><tbody>'+table+'</tbody></table>'+operations(s,r).map(([a,b])=>'<p><strong>'+esc(a)+':</strong> '+esc(b)+'</p>').join('')+'<p>'+esc(decision(s,r))+'</p><h2>Next step</h2><p>'+esc(next(s,r))+'</p><p>Assumptions: '+num(s.close)+'% close / '+money(r.netValue)+' revenue per sale, after cancellation reserve / '+num(s.penalty)+'% booking reduction during '+num(s.rampWeeks)+' weeks of training ramp. Post-ramp booking matches your process. Revenue is before appointment and other business costs. Cash totals include new leads, wages, tools, recruiting, and ramp where applicable. First-month hours include hiring, training, and monthly setting/supervision; everyone still attends appointments and closes sales. Hours have no dollar valuation.</p></div>';
   }
   async function build(s,r,lib){
     const {PDFDocument,StandardFonts,rgb}=lib,pdf=await PDFDocument.create(),page=pdf.addPage([612,792]);
@@ -88,24 +88,25 @@
     text(num(r.capacity.gap)+' empty slots / '+num(s.capacity)+' monthly capacity. Proposed plan: '+num(r.plan.totalShows)+' total shows, with '+num(r.plan.remaining)+' slots remaining.',36,571,9,sans,muted);
     page.drawRectangle({x:36,y:452,width:540,height:103,color:ink});
     text('PROPOSED MONTHLY PLAN / ADD TO YOUR EXISTING PIPELINE',52,537,8,bold,white,508);
-    const planStats=[['EXTRA SHOWS',num(r.target)],['LION INVESTMENT',money(r.plan.investment)],[r.plan.contribution<0?'POTENTIAL SHORTFALL':'POTENTIAL CONTRIBUTION',money(r.plan.contribution)],['PROJECTED SALE VALUE / SPEND',r.plan.returnMultiple===null?'Unavailable':num(r.plan.returnMultiple,2)+'x']];
+    const planStats=[['EXTRA SHOWS',num(r.target)],['LION INVESTMENT',money(r.plan.investment)],['PROJECTED REVENUE',money(r.plan.saleValue)],['REVENUE / APPT SPEND',r.plan.returnMultiple===null?'Unavailable':num(r.plan.returnMultiple,2)+'x']];
     planStats.forEach(([label,value],i)=>{const x=52+i*130;text(label,x,516,6.9,bold,white,120);text(value,x,492,23,serif,rgb(.85,.79,.59),120);});
-    text(num(r.target)+' shows x '+num(s.close)+'% close x '+money(r.netValue)+' net sale value, less '+money(r.plan.investment)+' appointment cost.',52,474,9,sans,white,508);
-    text('Potential contribution is after appointment spending, before other business costs. Return = sale value / appointment spend.',52,461,8,sans,white,508);
+    text(num(r.target)+' shows x '+num(s.close)+'% close x '+money(r.netValue)+' revenue/sale = '+money(r.plan.saleValue)+' projected revenue.',52,474,9,sans,white,508);
+    text(money(r.plan.saleValue)+' revenue - '+money(r.plan.investment)+' Lion fees = '+money(r.plan.contribution)+' before other business costs.',52,461,8,sans,white,508);
     paragraph(coverage(s,r),36,434,540,9,ink,1);
     text('What does adding '+num(r.target)+' shows require?',36,408,20,serif);
-    text("Same extra shows. Monthly hiring cost is after ramp; first month includes setup and ramp.",36,390,8.5,sans,muted);
+    text("Same extra shows. First month includes setup and ramp; ongoing monthly costs apply after ramp.",36,390,8.5,sans,muted);
     const colX=[36,259,367,475],colW=[223,108,108,101];
     page.drawRectangle({x:36,y:354,width:540,height:25,color:paper});
-    ['','YOUR PROCESS','HIRED SETTER','LION / SHOW'].forEach((v,i)=>text(v,colX[i]+(i?7:0),363,8,bold,muted,colW[i]-12));
+    ['','MORE LEADS','HIRE A SETTER','LION / SHOW'].forEach((v,i)=>text(v,colX[i]+(i?7:0),363,8,bold,muted,colW[i]-12));
     rows(r).forEach((row,i)=>{const bottom=330-i*23;if(i===0)page.drawRectangle({x:36,y:bottom-1,width:540,height:23,color:paper});row.forEach((v,j)=>text(v,colX[j]+(j?7:0),bottom+7,9,j===3||i===0?bold:sans,ink,colW[j]-12));page.drawLine({start:{x:36,y:bottom},end:{x:576,y:bottom},thickness:.4,color:lineColor});});
-    operations(s,r).forEach(([a,b],i)=>paragraph(a+': '+b,36,223-i*36,540,8.5,i===2?ink:muted,2,11));
+    paragraph('Cash: new leads, wages, tools, recruiting and ramp costs. Your hours: setting or supervision + hiring/training in month one. Everyone still attends appointments and closes sales.',36,223,540,8,muted,2,10);
+    operations(s,r).forEach(([a,b],i)=>paragraph(a+': '+b,36,193-i*30,540,8,i===2?ink:muted,2,10));
     text('KEEP WHAT WORKS. ADD SHOWS WITHOUT ADDING A SETTING TEAM.',36,112,8,bold,gold);
     paragraph(s.nextStep||'Next step: confirm the product, market, appointment volume, and final quote.',36,97,540,9,ink,2,11);
     text('Next step: '+formatDate(s.nextDate)+' / Proposed launch: '+formatDate(s.launchDate),36,72,8,sans,muted);
     line(66);
-    paragraph('Assumptions: '+num(s.close)+'% close; '+money(r.netValue)+' net sale value; '+money(s.price)+'/show. Setter: '+money(s.setterMonthly)+'/month; '+num(r.hired.setters,0)+' needed; '+num(s.penalty)+'% booking reduction during '+num(s.rampWeeks)+' weeks of ramp. First month uses 30 days; post-ramp performance matches your process.',36,54,540,7.5,muted,2,9);
-    paragraph('Time: '+num(s.dialSeconds)+' sec/dial x '+num(s.attemptsPerLead)+' attempts/lead; '+num(s.connectMinutes)+' min/unbooked connect; '+num(s.bookedMinutes)+' min/booked call, including the connection. Hours have no dollar value. Results are estimates before other business costs.',36,28,540,7.5,muted,2,9);
+    paragraph('Assumptions: '+num(s.close)+'% close; '+money(r.netValue)+' revenue/sale after reserve; '+money(s.price)+'/show. Setter: '+money(s.setterMonthly)+'/month; '+num(r.hired.setters,0)+' needed; '+num(s.penalty)+'% booking reduction during '+num(s.rampWeeks)+' weeks of ramp. First month uses 30 days; post-ramp performance matches your process.',36,54,540,7.5,muted,2,9);
+    paragraph('Time: '+num(s.dialSeconds)+' sec/dial x '+num(s.attemptsPerLead)+' attempts/lead; '+num(s.connectMinutes)+' min/unbooked connect; '+num(s.bookedMinutes)+' min/booked call, including the connection. Hours have no dollar value. Revenue projections are estimates before appointment and other business costs.',36,28,540,7.5,muted,2,9);
     pdf.setTitle('Lion Marketing - Proposed Appointment Plan');pdf.setAuthor('Lion Marketing');return pdf.save();
   }
   root.LionReport={html,build,rows,decision,benefits,valueCase,costDifference,operations,formatDate,next,coverage,money,num,esc};
